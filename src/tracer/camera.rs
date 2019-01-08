@@ -20,7 +20,7 @@ impl Camera {
         let w = w/w.magnitude();
         let u = vup.cross(w);
         let u = u/u.magnitude();
-        let v = w.cross(u);
+        let v = -w.cross(u); //Negative due to the coordinate system used by image formats being used.
 
         Camera { 
             lower_left_corner: lookfrom - half_width*u - half_height*v - w,
