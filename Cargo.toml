@@ -1,0 +1,10 @@
+[package]
+name = "rustytracer"
+version = "0.1.0"
+authors = ["Ryan Glusic <rglusic@mchenry.edu>"]
+edition = "2018"
+
+[dependencies]
+cgmath = "0.16.1"
+rand = "0.4.3"
+image = "0.20.1"
