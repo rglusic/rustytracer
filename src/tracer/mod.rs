@@ -25,17 +25,17 @@ pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     
     let sphere2 = geometry::Sphere::new(
         Vector3::new(2.0, 2.0, 2.0), 
-        0.5, Vector3::new(-1.0, 0.0, -1.0), 
+        1.0, Vector3::new(-2.0, 0.0, -1.0), 
         &mat_glass);
 
     let sphere3 = geometry::Sphere::new(
         Vector3::new(0.7, 0.7, 0.7), 
-        0.5, Vector3::new(1.0, 0.0, -1.0),
+        1.0, Vector3::new(2.0, 0.0, -1.0),
         &mat_metal);
 
     let sphere4 = geometry::Sphere::new(
         Vector3::new(1.0, 0.0, 0.0), 
-        0.5, Vector3::new(0.0, 0.0, -1.0),
+        1.0, Vector3::new(0.0, 0.0, -1.0),
         &mat_flat);
 
     data.push(&plane1);
@@ -44,7 +44,7 @@ pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     data.push(&sphere4);
 
     let cam = camera::Camera::new(
-        Vector3::new(0.0, 0.0, 1.0),
+        Vector3::new(0.0, 0.0, 2.0),
         Vector3::new(0.0, 0.0, -1.0),
         Vector3::new(0.0, 1.0, 0.0),
         90.0,

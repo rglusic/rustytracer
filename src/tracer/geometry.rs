@@ -9,6 +9,7 @@ pub trait Hitable {
     fn get_radius(&self) -> f64;
     fn get_color(&self) -> &Vector3<f64>;
     fn get_material(&self) -> &Material;
+    fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64>;
 }
 
 pub struct Plane<'a> {
@@ -50,6 +51,10 @@ impl<'a> Hitable for Plane<'a> {
 
     fn get_material(&self) -> &Material {
         self.mat
+    }
+
+    fn get_norm_at_p(&self, _: &Vector3<f64>) -> Vector3<f64> {
+        self.normal
     }
 }
 
@@ -100,6 +105,11 @@ impl<'a> Hitable for Sphere<'a> {
     fn get_material(&self) -> &Material {
         self.mat
     }
+
+    fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64> {
+        let n = p - self.center;
+        n/n.magnitude()
+    }
 }
 
 pub fn rand_usphere() -> Vector3<f64> {
@@ -138,8 +148,7 @@ pub fn color(ray: &Ray, table: &[&Hitable], depth: i64, t_max: f64) -> Vector3<f
             continue;
         }
         let p = ray.point_at_parameter(t2);
-        let n = p - hitable.get_center();
-        let n = n/n.magnitude();
+        let n = hitable.get_norm_at_p(&p);
         if t > 0.001 && depth < 5 {
             let col = color(&hitable.get_material().scatter(ray, &n, &p), &table, depth+1, t_max);
             return 0.5 * Vector3::new(hitable.get_color().x * col.x, hitable.get_color().y * col.y, hitable.get_color().z * col.z);
