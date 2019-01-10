@@ -5,41 +5,43 @@ mod ray;
 mod geometry;
 mod camera;
 mod material;
-use std::fs::File;
-use std::io::prelude::*;
 use cgmath::*;
 use rand::*;
-//use cgmath::prelude::*;
 use crate::tracer::image::GenericImage;
 
 pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     let mut img = image::DynamicImage::new_rgb8(width, height);
     let ns = 32;
-    let mut data: Vec<geometry::Sphere> = Vec::new();
+    let mut data: Vec<&geometry::Hitable> = Vec::new();
     let mat_flat = material::Flat{};
     let mat_metal = material::Metal{};
     let mat_glass = material::Dielectric::new(1.5);
 
-    data.push(geometry::Sphere::new(
-        Vector3::new(0.4, 0.4, 0.0), 
-        100.0, Vector3::new(0.0, -100.5, 0.0), 
-        &mat_flat as &material::Material)
-    );
-    data.push(geometry::Sphere::new(
+    let plane1 = geometry::Plane::new(
+        Vector3::new(0.0, -1.0, 0.0),
+        Vector3::new(0.0, 1.0, 0.0),
+        Vector3::new(0.7, 0.7, 0.0),
+        &mat_flat);
+    
+    let sphere2 = geometry::Sphere::new(
         Vector3::new(2.0, 2.0, 2.0), 
         0.5, Vector3::new(-1.0, 0.0, -1.0), 
-        &mat_glass as &material::Material)
-    );
-    data.push(geometry::Sphere::new(
-    Vector3::new(0.7, 0.7, 0.7), 
+        &mat_glass);
+
+    let sphere3 = geometry::Sphere::new(
+        Vector3::new(0.7, 0.7, 0.7), 
         0.5, Vector3::new(1.0, 0.0, -1.0),
-        &mat_metal as &material::Material)
-    );
-    data.push(geometry::Sphere::new(
+        &mat_metal);
+
+    let sphere4 = geometry::Sphere::new(
         Vector3::new(1.0, 0.0, 0.0), 
         0.5, Vector3::new(0.0, 0.0, -1.0),
-        &mat_flat as &material::Material)
-    );
+        &mat_flat);
+
+    data.push(&plane1);
+    data.push(&sphere2);
+    data.push(&sphere3);
+    data.push(&sphere4);
 
     let cam = camera::Camera::new(
         Vector3::new(0.0, 0.0, 1.0),
