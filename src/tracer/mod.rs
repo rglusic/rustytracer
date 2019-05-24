@@ -29,7 +29,7 @@ pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     
     let sphere2 = geometry::Sphere::new(
         Vector3::new(1.0, 1.0, 1.0), 
-        1.0, Vector3::new(-2.0, 0.0, 0.0), 
+        1.5, Vector3::new(-3.0, 0.5, 0.0), 
         &mat_glass);
 
     let sphere3 = geometry::Sphere::new(
@@ -53,7 +53,7 @@ pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     data.push(&sphere_light);
 
     let cam = camera::Camera::new(
-        Vector3::new(-1.0, 2.0, -5.0),
+        Vector3::new(-5.0, 2.0, 3.0),
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 1.0, 0.0),
         100.0,
