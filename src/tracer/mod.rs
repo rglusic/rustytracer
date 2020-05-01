@@ -16,7 +16,7 @@ use crate::tracer::scene::*;
 pub fn generate(path: &str, width: u32, height: u32) -> std::io::Result<()> {
     let mut img = image::DynamicImage::new_rgb8(width, height);
     let ns = 32;
-    let mut data: Vec<&geometry::Hitable> = Vec::new();
+    let mut data: Vec<& dyn geometry::Hitable> = Vec::new();
     let mat_flat = material::Flat{};
     let mat_metal = material::Metal{};
     let mat_glass = material::Dielectric::new(1.07);

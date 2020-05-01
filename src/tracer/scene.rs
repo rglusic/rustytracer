@@ -4,12 +4,12 @@ use super::ray::*;
 use cgmath::*;
 
 pub struct Scene<'a> {
-    renderables: &'a [&'a Hitable],
+    renderables: &'a [&'a dyn Hitable],
     lights: &'a [Light]
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(render_list: &'a [&'a Hitable], light_list: &'a [Light]) -> Scene<'a> {
+    pub fn new(render_list: &'a [&'a dyn Hitable], light_list: &'a [Light]) -> Scene<'a> {
         Scene { renderables: render_list, lights: light_list }
     }
 

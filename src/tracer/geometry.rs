@@ -8,7 +8,7 @@ pub trait Hitable {
     fn get_center(&self) -> &Vector3<f64>;
     fn get_radius(&self) -> f64;
     fn get_color(&self) -> &Vector3<f64>;
-    fn get_material(&self) -> &Material;
+    fn get_material(&self) -> &dyn Material;
     fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64>;
 }
 
@@ -16,11 +16,11 @@ pub struct Plane<'a> {
     origin: Vector3<f64>,
     normal: Vector3<f64>,
     color:  Vector3<f64>,
-    mat:    &'a Material
+    mat:    &'a dyn Material
 }
 
 impl<'a> Plane<'a> {
-    pub fn new(org: Vector3<f64>, n: Vector3<f64>, col: Vector3<f64>, m: &'a Material) -> Plane<'a> {
+    pub fn new(org: Vector3<f64>, n: Vector3<f64>, col: Vector3<f64>, m: &'a dyn Material) -> Plane<'a> {
         Plane { origin: org, normal: n, color: col, mat: m }
     }
 }
@@ -49,7 +49,7 @@ impl<'a> Hitable for Plane<'a> {
         &self.color
     }
 
-    fn get_material(&self) -> &Material {
+    fn get_material(&self) -> & dyn Material {
         self.mat
     }
 
@@ -62,11 +62,11 @@ pub struct Sphere<'a> {
     color: Vector3<f64>,
     radius: f64,
     center: Vector3<f64>,
-    mat: &'a Material
+    mat: &'a dyn Material
 }
 
 impl<'a> Sphere<'a> {
-    pub fn new(col: Vector3<f64>, r: f64, c: Vector3<f64>, m: &'a Material) -> Sphere<'a> {
+    pub fn new(col: Vector3<f64>, r: f64, c: Vector3<f64>, m: &'a dyn Material) -> Sphere<'a> {
         Sphere { color: col, radius: r, center: c, mat: m }
     }
 }
@@ -102,7 +102,7 @@ impl<'a> Hitable for Sphere<'a> {
         &self.color
     }
 
-    fn get_material(&self) -> &Material {
+    fn get_material(&self) -> & dyn Material {
         self.mat
     }
 

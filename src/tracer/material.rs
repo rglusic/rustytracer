@@ -40,7 +40,7 @@ impl Material for Dielectric {
         let ni_over_nt: f64;
         let outward_normal: Vector3<f64>;
         let cos: f64;
-        let reflection = reflect(r.direction(), n);
+        //let reflection = reflect(r.direction(), n);
         //in
         if r.direction().dot(*n) < 0.0 {
             outward_normal = *n;
