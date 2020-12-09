@@ -2,5 +2,5 @@ mod tracer;
 use crate::tracer::*;
 
 fn main() {
-    generate("image.png", 800,600).expect("Error, failure to write to file.");
+    generate("output/image.png", 200,100).expect("Error, failure to write to file.");
 }
