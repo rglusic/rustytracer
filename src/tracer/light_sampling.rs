@@ -1,6 +1,6 @@
 //! Next-event estimation and matching endpoint PDFs for multiple importance sampling.
 use super::geometry::{Shape, Surface, abs, gamma};
-use super::material::{Color, Material, attenuate, black, maximum, multiply, uniform_sphere};
+use super::material::{Color, Kind, Material, attenuate, black, maximum, multiply, uniform_sphere};
 use super::ray::Ray;
 use super::sampler::Sampler;
 use super::scene::{Scene, power_heuristic};
@@ -50,12 +50,16 @@ impl Scene {
             return black();
         }
         let selection = (rng.next() * count as f64) as usize;
+        // Consume the same three variates even when a sample contributes zero.
+        let direction = uniform_sphere(rng.next(), rng.next());
+        if material.kind == Kind::Diffuse && maximum(material.albedo) == 0. {
+            return black();
+        }
         let mut pdf = 1. / (4. * PI * count as f64);
         let (wi, emitted, distance) = if selection == self.lights.len() {
-            let wi = uniform_sphere(rng.next(), rng.next());
-            if self
-                .intersect(&Ray::new_from(surface.offset(wi), wi), f64::INFINITY)
-                .is_some()
+            let wi = direction;
+            if n.dot(wi) <= 0.
+                || self.occluded(&Ray::new_from(surface.offset(wi), wi), f64::INFINITY)
             {
                 return black();
             }
@@ -65,7 +69,7 @@ impl Scene {
             let light = &self.renderables[index];
             match light.shape() {
                 Shape::Sphere { center, radius } => {
-                    let normal = uniform_sphere(rng.next(), rng.next());
+                    let normal = direction;
                     let point = center + radius * normal;
                     let delta = point - surface.point;
                     let distance = delta.magnitude();
@@ -73,6 +77,10 @@ impl Scene {
                         return black();
                     }
                     let wi = delta / distance;
+                    let emitted = light.material().emitted(normal, -wi);
+                    if n.dot(wi) <= 0. || maximum(emitted) == 0. {
+                        return black();
+                    }
                     let cosine = normal.dot(-wi).abs();
                     if cosine == 0. {
                         return black();
@@ -87,16 +95,16 @@ impl Scene {
                     let from = surface.offset(wi);
                     let to = target.offset(-wi);
                     let shadow = to - from;
-                    if self
-                        .intersect(&Ray::new_from(from, shadow.normalize()), shadow.magnitude())
-                        .is_some()
-                    {
+                    if self.occluded(&Ray::new_from(from, shadow.normalize()), shadow.magnitude()) {
                         return black();
                     }
-                    (wi, light.material().emitted(normal, -wi), distance)
+                    (wi, emitted, distance)
                 }
                 Shape::Plane { .. } => {
-                    let wi = uniform_sphere(rng.next(), rng.next());
+                    let wi = direction;
+                    if n.dot(wi) <= 0. {
+                        return black();
+                    }
                     let Some(hit) =
                         self.intersect(&Ray::new_from(surface.offset(wi), wi), f64::INFINITY)
                     else {

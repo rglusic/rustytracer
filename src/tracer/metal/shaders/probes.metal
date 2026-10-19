@@ -48,3 +48,22 @@ kernel void probe_glass(constant Parameters &p [[buffer(0)]], device float4 *out
     float3 reflected = sample_bsdf(m, wo, float3(0,-1,0), 1.5f, 1.0f, state).wi;
     output[pixel] = float4(reflected, 0);
 }
+
+template<typename Query>
+float4 probe_visibility(uint pixel,Query query) {
+    float3 origin,direction;
+    probe_ray(pixel%8,origin,direction);
+    float maximum=pixel/8==0 ? MAXFLOAT : (pixel/8==1 ? 2.0f : (pixel/8==2 ? nextafter(2.0f,INFINITY) : 0.0f));
+    return float4(query.occluded(origin,direction,maximum),query.intersect(origin,direction,maximum).found,0,0);
+}
+kernel void probe_visibility_linear(constant Parameters &p [[buffer(0)]],device const Sphere *spheres [[buffer(1)]],
+                                    device const Plane *planes [[buffer(2)]],device float4 *output [[buffer(3)]],
+                                    uint pixel [[thread_position_in_grid]]) {
+    output[pixel]=probe_visibility(pixel,LinearQuery{&p,spheres,planes});
+}
+kernel void probe_visibility_hardware(constant Parameters &p [[buffer(0)]],device const Sphere *spheres [[buffer(1)]],
+                                      device const Plane *planes [[buffer(2)]],device float4 *output [[buffer(3)]],
+                                      primitive_acceleration_structure acceleration [[buffer(4)]],intersection_function_table<> functions [[buffer(5)]],
+                                      uint pixel [[thread_position_in_grid]]) {
+    output[pixel]=probe_visibility(pixel,HardwareQuery{&p,spheres,planes,acceleration,functions});
+}

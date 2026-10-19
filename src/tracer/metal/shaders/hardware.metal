@@ -25,6 +25,14 @@ struct HardwareQuery {
     Hit intersect(float3 origin,float3 direction,float maximum=MAXFLOAT) const {
         return intersect_hardware(origin,direction,*p,spheres,planes,acceleration,functions,maximum);
     }
+    bool occluded(float3 origin,float3 direction,float maximum=MAXFLOAT) const {
+        if (maximum<=0) return false;
+        if (occluded_planes(origin,direction,*p,planes,maximum)) return true;
+        ray r; r.origin=origin; r.direction=direction; r.min_distance=0; r.max_distance=maximum;
+        intersector<> tester; tester.assume_geometry_type(geometry_type::bounding_box);
+        tester.accept_any_intersection(true);
+        return tester.intersect(r,acceleration,functions).type!=intersection_type::none;
+    }
 };
 kernel void trace_hardware(constant Parameters &p [[buffer(0)]],device const Sphere *spheres [[buffer(1)]],
                            device const Plane *planes [[buffer(2)]],device float4 *accumulation [[buffer(3)]],

@@ -49,6 +49,13 @@ impl Scene {
             surface: self.renderables[index].surface(ray, closest),
         })
     }
+    /// Visibility needs only a blocker, not its shading surface or the closest hit.
+    pub(super) fn occluded(&self, ray: &Ray, maximum: f64) -> bool {
+        self.renderables.iter().any(|object| {
+            let distance = object.hit(ray, maximum);
+            distance > 0. && distance < maximum
+        })
+    }
     /// Nested spheres have a unique smallest containing volume. No fixed-depth medium stack.
     pub(super) fn medium(&self, point: Color, excluded: Option<usize>) -> (f64, Color) {
         let mut radius = f64::INFINITY;
@@ -158,3 +165,7 @@ pub fn power_heuristic(a: f64, b: f64) -> f64 {
     let ratio = b / a;
     1. / (1. + ratio * ratio)
 }
+
+#[cfg(test)]
+#[path = "scene_tests.rs"]
+mod tests;

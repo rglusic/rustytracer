@@ -97,6 +97,22 @@ Hit intersect_linear(float3 origin,float3 direction,constant Parameters &p,devic
     }
     return hit;
 }
+bool occluded_planes(float3 origin,float3 direction,constant Parameters &p,device const Plane *planes,float maximum) {
+    for (uint i=0;i<p.plane_count;++i) {
+        float denominator=dot(direction,planes[i].normal.xyz);
+        if (denominator==0) continue;
+        float t=dot(planes[i].origin.xyz-origin,planes[i].normal.xyz)/denominator;
+        if (t>0 && t<maximum) return true;
+    }
+    return false;
+}
+bool occluded_linear(float3 origin,float3 direction,constant Parameters &p,device const Sphere *spheres,device const Plane *planes,float maximum) {
+    if (occluded_planes(origin,direction,p,planes,maximum)) return true;
+    for (uint i=0;i<p.sphere_count;++i) {
+        if (sphere_distance(origin,direction,spheres[i].center_radius,maximum)>0) return true;
+    }
+    return false;
+}
 Material hit_material(Hit hit,device const Sphere *spheres,device const Plane *planes) { return hit.sphere ? spheres[hit.index].material : planes[hit.index].material; }
 float3 emitted(Material m,float3 n,float3 outgoing) { return m.flags.y || dot(n,outgoing)>0 ? m.emission.xyz : float3(0); }
 float power_heuristic(float a,float b) { if(a==0) return 0; float r=b/a; return 1/(1+r*r); }

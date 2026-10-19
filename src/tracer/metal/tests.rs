@@ -449,3 +449,30 @@ fn gpu_camera_inside_absorbing_glass_matches_analytic_radiance() {
         }
     }
 }
+
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_visibility_matches_closest_hits_and_strict_shadow_endpoints() {
+    let value = json!({
+        "camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":90},
+        "planes":[{"origin":[0,-2,0],"normal":[0,1,0],"mat":"flat"}],
+        "spheres":[{"center":[0,0,-3],"radius":1,"mat":"glass"}]
+    });
+    let world = World::from_reader(value.to_string().as_bytes(), 32, 1).unwrap();
+    for (traversal, name) in [
+        (Traversal::Linear, "probe_visibility_linear"),
+        (Traversal::Hardware, "probe_visibility_hardware"),
+    ] {
+        let config = settings(32, 1, 1, traversal);
+        let frame = probe(&world, config, name);
+        for (pixel, value) in frame.linear.iter().enumerate() {
+            assert_eq!(value[0], value[1], "{traversal:?}: visibility ray {pixel}");
+        }
+        assert_eq!(frame.linear[8][0], 0., "Endpoint itself is excluded");
+        assert_eq!(
+            frame.linear[16][0], 1.,
+            "Hit just before endpoint is included"
+        );
+        assert!(frame.linear[24..].iter().all(|p| p[0] == 0.));
+    }
+}

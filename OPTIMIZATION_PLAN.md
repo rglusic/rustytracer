@@ -1,7 +1,7 @@
 # Renderer optimization and cleanup plan
 
-Status: proposed, awaiting approval before implementation under the supplied
-AGENTS.md instructions. Branch: `renderer-optimization-cleanup`, based on physics
+Status: all three milestones approved by the user; implementation in progress.
+Branch: `renderer-optimization-cleanup`, based on physics
 commit `43426ba68a2f0e2bbb7751dcab37f97b3ca043d3`.
 
 ## Investigation completed
@@ -108,6 +108,21 @@ claims require before/after measurements with the same compiler, workload, and
 measurement method. Keep targeted optimizations that improve measured workloads;
 investigate regressions before accepting them. Record the final revision and
 results in a new benchmark report.
+
+## Implementation record
+
+Milestone 1 completed: CPU/Metal occlusion queries, strict endpoint and early-exit
+tests, and CPU rejection of zero-contribution light samples. All 40 standard and
+14 actual GPU tests passed; CPU and both GPU traversal images had exactly zero
+MSE against the saved 320x180, 256-sample EXR baselines. Strict Clippy passed with
+and without Metal, and the standalone Metal library compiled.
+
+Early light rejection was tested on Metal but removed: an alternating comparison
+showed a small-room regression. Isolating the change restored baseline GPU time
+while retaining dedicated occlusion queries. The dense-scene measurements support
+retaining the latter, including 4096-sphere hardware traversal at 0.0234s versus
+the recorded 0.0281s baseline (PNG included). Final measurements will recheck the
+combined implementation with the same workloads.
 
 ## References checked during investigation
 

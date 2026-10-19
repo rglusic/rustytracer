@@ -17,7 +17,7 @@ float3 direct_light(Query query,Surface s,float3 wo,float3 n,Material m,float3 a
     float3 wi=uniform_sphere(u,v),le;
     float distance=INFINITY,pdf=1/(4*PI*p.light_count);
     if(light.x==2) {
-        if(query.intersect(offset_origin(s,wi),wi).found) return 0;
+        if(query.occluded(offset_origin(s,wi),wi)) return 0;
         le=p.environment.xyz;
     } else if(light.x==1) {
         Hit h=query.intersect(offset_origin(s,wi),wi);
@@ -34,7 +34,7 @@ float3 direct_light(Query query,Surface s,float3 wo,float3 n,Material m,float3 a
         pdf*=distance*distance/(sphere.center_radius.w*sphere.center_radius.w*cosine);
         Surface target={point,normal,(abs(sphere.center_radius.xyz)+abs(point)+sphere.center_radius.w)*gamma_error()};
         float3 from=offset_origin(s,wi),to=offset_origin(target,-wi),shadow=to-from;
-        if(query.intersect(from,normalize(shadow),length(shadow)).found) return 0;
+        if(query.occluded(from,normalize(shadow),length(shadow))) return 0;
         le=emitted(sphere.material,normal,-wi);
     }
     Evaluation e=evaluate_bsdf(m,wo,wi,n);
