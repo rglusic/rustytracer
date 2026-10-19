@@ -9,9 +9,13 @@ permissions:
 
 jobs:
   lint:
-    name: Formatting and Clippy
-    runs-on: ubuntu-latest
+    name: Formatting and Clippy on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -46,6 +50,21 @@ jobs:
       - run: cargo +${{ matrix.rust }} test --locked --all-targets --all-features
       - run: cargo +${{ matrix.rust }} test --locked --all-targets --no-default-features
       - run: cargo +${{ matrix.rust }} build --release --locked
+      - name: Check Python tools and generated scenes
+        if: runner.os == 'Linux' && matrix.rust == '1.99.1'
+        run: |
+          python3 -m compileall -q scripts
+          python3 scripts/benchmark.py --help
+          python3 scripts/tune_metal.py --help
+          python3 scripts/check_shaders.py --help
+          python3 scripts/validate_physics.py --help
+          python3 scripts/benchmark.py --generate-only --spheres 2 16 64 --output target/ci-scenes
+          ./target/release/rustytracer --backend cpu --scene target/ci-scenes/spheres-16.json \
+            --width 16 --height 16 --samples 4 \
+            --output target/ci-scenes/render.png --metrics target/ci-scenes/render.json
+      - name: Verify analytical radiance through the CPU command-line renderer
+        if: runner.os == 'Linux' && matrix.rust == '1.99.1'
+        run: python3 scripts/validate_physics.py --cpu-only --output target/ci-physics
       - name: Install Metal compiler
         if: runner.os == 'macOS'
         run: xcodebuild -downloadComponent metalToolchain

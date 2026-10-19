@@ -172,6 +172,8 @@ rustup run 1.99.1 cargo clippy --locked --all-targets --all-features -- -D warni
 rustup run 1.99.1 cargo clippy --locked --all-targets --no-default-features -- -D warnings
 rustup run 1.99.1 cargo test --locked --all-features
 rustup run 1.99.1 cargo test --locked --no-default-features
+python3 -m compileall -q scripts
+python3 scripts/validate_physics.py --cpu-only
 xcodebuild -downloadComponent metalToolchain
 python3 scripts/check_shaders.py --check-format
 MTL_DEBUG_LAYER=1 MTL_SHADER_VALIDATION=1 \
@@ -184,7 +186,11 @@ hardware traversal. They cover RNG equivalence, BSDFs, CPU/GPU radiance agreemen
 analytic furnace and cavity energy, nested glass and absorption, rough conductors,
 batch determinism, path continuation, geometry edge cases, and invalid dispatches.
 Ordinary CI runs CPU tests on Linux/macOS/Windows, including Rust 1.88 on Linux;
-macOS also compiles Metal shaders. GPU runtime tests run explicitly on hardware.
+strict Clippy runs on Linux and macOS so it covers the native Metal host code.
+macOS also checks packed scene metadata and compiles/formats Metal shaders without
+requiring a GPU. Linux validates the Python tools, generated benchmark scenes, and
+the CPU command's analytical radiance/MSE reports. GPU runtime tests run explicitly
+on hardware.
 
 To omit Apple GPU dependencies, build with `--no-default-features`.
 
@@ -203,17 +209,23 @@ python3 scripts/tune_metal.py --scene target/performance-physics/spheres-4096.js
 
 ## Architecture
 
+- `benchmark.rs`: application orchestration, warmups, and timed renders.
+- `benchmark/output.rs`, `benchmark/report.rs`: output/reference validation, encoding,
+  raw radiance comparison, and typed timing reports with the existing JSON schema.
+- `benchmark/tests.rs`: output and report tests through the application workflow.
 - `world.rs`, `material_input.rs`: validated scene and physical material contract.
 - `material.rs`, `scene.rs`, `light_sampling.rs`: f64 BSDFs, transport, and MIS.
 - `geometry.rs`: intersections, projected hit points, and secondary-ray spawning.
 - `media.rs`: prepared dielectric hierarchy and CPU medium transitions.
 - `render.rs`, `sampler.rs`: deterministic per-pixel/sample CPU work and RNG.
-- `metal/data.rs`: checked POD layouts and medium/light metadata.
+- `metal/data.rs`: POD layouts matching the shader types.
+- `metal/packing.rs`: checked camera, geometry, and material conversion to f32.
+- `metal/scene.rs`: scene preparation, medium validation/hierarchy, and ordered lights.
 - `metal/mod.rs`: render orchestration and resumable sample batches.
 - `metal/buffers.rs`, `metal/dispatch.rs`: owned GPU storage and command encoding.
 - `metal/pipeline.rs`, `metal/acceleration.rs`: shader pipelines and hardware traversal.
 - `metal/shaders/`: shared types, sampling, geometry, BSDFs, lighting, and path advancement.
-- `metal/tests/`: GPU geometry, scheduling, and physical transport tests.
+- `metal/tests/`: scene preparation, GPU geometry, scheduling, and physical transport tests.
 - `build.rs`, `metal/shaders/sources.txt`: one source order for embedded and offline shader compilation.
 - `scripts/benchmark_common.py`: shared command execution and timing-report handling.
 - `frame.rs`: radiance validation, float EXR, exposure, and sRGB display encoding.
