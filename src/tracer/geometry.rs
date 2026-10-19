@@ -5,7 +5,7 @@ use rand::RngExt;
 pub trait Hitable: Send + Sync {
     fn hit(&self, r: &Ray, t_max: f64) -> f64;
     fn get_color(&self) -> &Vector3<f64>;
-    fn get_material(&self) -> String;
+    fn get_material(&self) -> &str;
     fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64>;
 }
 
@@ -43,8 +43,8 @@ impl Hitable for Plane {
         &self.color
     }
 
-    fn get_material(&self) -> String {
-        self.mat.clone()
+    fn get_material(&self) -> &str {
+        &self.mat
     }
 
     fn get_norm_at_p(&self, _: &Vector3<f64>) -> Vector3<f64> {
@@ -78,6 +78,9 @@ impl Hitable for Sphere {
         let b = oc.dot(*r.direction());
         let c = oc.dot(oc) - (self.radius * self.radius);
         let discriminant = b * b - a * c;
+        if a == 0.0 || discriminant < 0.0 {
+            return 0.0;
+        }
         let t = (-b - discriminant.sqrt()) / a;
         if (t < t_max) && (t > 0.001) {
             return t;
@@ -93,8 +96,8 @@ impl Hitable for Sphere {
         &self.color
     }
 
-    fn get_material(&self) -> String {
-        self.mat.clone()
+    fn get_material(&self) -> &str {
+        &self.mat
     }
 
     fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64> {

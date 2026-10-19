@@ -33,28 +33,11 @@ impl Scene {
         t
     }
 
-    //fn _shadow_march(&self, p: &Vector3<f64>, n: &Vector3<f64>) -> f64 {
-    //    let mut attenuation: f64 = 0.0;
-    //    for light in &*self.lights.clone() {
-    //        let op = light.origin() - *p;
-    //        let op_mag = op.magnitude();
-    //        let shadow = Ray::new_from(*p, *light.origin());
-    //        let closest = self.get_closest_intersection(&shadow);
-    //        let shadow = shadow.point_at_parameter(closest);
-    //        if shadow.magnitude() != op_mag {
-    //            attenuation = 0.1;
-    //            continue;
-    //        }
-    //        let falloff = light.intensity()/op.dot(op);
-    //        attenuation += op.dot(*n);
-    //        attenuation *= falloff;
-    //        attenuation = attenuation.max(0.1).min(1.0);
-    //    }
-    //    attenuation
-    //}
-
     pub fn render(&self, ray: &Ray, depth: i64, t_max: f64) -> Vector3<f64> {
-        //Prevent infinite loops.
+        // Bound recursion even if random termination repeatedly keeps a path alive.
+        if depth >= 64 {
+            return Vector3::new(0.0, 0.0, 0.0);
+        }
         if depth > 3 {
             let rng = rand::rng().random::<f64>();
             if rng > 0.3 {
@@ -71,15 +54,11 @@ impl Scene {
 
             let p = ray.point_at_parameter(t2);
             let n = hitable.get_norm_at_p(&p);
-            let emitted = self
-                .materials
-                .get_material_by_key(hitable.get_material())
-                .emitted();
-
-            let (new_ray, _scattered) = self
-                .materials
-                .get_material_by_key(hitable.get_material())
-                .scatter(ray, &n, &p);
+            let material = self.materials.get_material_by_key(hitable.get_material());
+            let emitted = material.emitted();
+            let Some(new_ray) = material.scatter(ray, &n, &p) else {
+                return emitted;
+            };
 
             let col = self.render(&new_ray, depth + 1, t_max);
             return emitted

@@ -7,7 +7,7 @@ use std::collections::HashMap as Map;
 use std::sync::Arc;
 
 pub trait Material: Send + Sync {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64);
+    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray>;
     fn emitted(&self) -> Vector3<f64> {
         Vector3::new(0.0, 0.0, 0.0)
     }
@@ -16,20 +16,19 @@ pub trait Material: Send + Sync {
 pub struct Flat {}
 
 impl Material for Flat {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64) {
+    fn scatter(&self, _: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
         let direction = n + geometry::rand_usphere();
         let direction = direction / direction.dot(direction).sqrt();
-        let pdf = n.dot(*r.direction()) / std::f64::consts::PI;
-        (ray::Ray::new_from(*p, direction), pdf)
+        Some(ray::Ray::new_from(*p, direction))
     }
 }
 
 pub struct Metal {}
 
 impl Material for Metal {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64) {
+    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
         let reflected = reflect(&(r.direction() / r.direction().magnitude()), n);
-        (ray::Ray::new_from(*p, reflected), 0.0)
+        Some(ray::Ray::new_from(*p, reflected))
     }
 }
 
@@ -44,32 +43,22 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64) {
-        let ni_over_nt: f64;
-        let outward_normal: Vector3<f64>;
-        let cos: f64;
-        let reflection = reflect(r.direction(), n);
-        //in
-        if r.direction().dot(*n) < 0.0 {
-            outward_normal = *n;
-            ni_over_nt = 1.0 / self.ref_index;
-            cos = -r.direction().dot(*n) / r.direction().magnitude();
+    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
+        let incoming = r.direction().normalize();
+        let (normal, ratio) = if incoming.dot(*n) < 0.0 {
+            (*n, 1.0 / self.ref_index)
         } else {
-            //out
-            outward_normal = -1.0 * n;
-            ni_over_nt = self.ref_index;
-            cos = self.ref_index * r.direction().dot(*n) / r.direction().magnitude();
-        }
-        let refraction = refract(r.direction(), &outward_normal, ni_over_nt);
-        let reflect_prob: f64 = schlick(cos, self.ref_index);
-        let mut rng = rand::rng();
-        let rng: f64 = rng.random();
-
-        if rng < reflect_prob {
-            return (ray::Ray::new_from(*p, reflection), 0.0);
-        }
-
-        (ray::Ray::new_from(*p, refraction), 0.0)
+            (-*n, self.ref_index)
+        };
+        let cosine = (-incoming.dot(normal)).clamp(0.0, 1.0);
+        let direction = match refract(&incoming, &normal, ratio) {
+            Some(refracted) if rand::rng().random::<f64>() >= schlick(cosine, self.ref_index) => {
+                refracted
+            }
+            // Total internal reflection cannot produce a transmitted ray.
+            _ => reflect(&incoming, &normal),
+        };
+        Some(ray::Ray::new_from(*p, direction))
     }
 }
 
@@ -77,10 +66,13 @@ fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
     v - 2.0 * v.dot(*n) * n
 }
 
-fn refract(v: &Vector3<f64>, n: &Vector3<f64>, ni_over_nt: f64) -> Vector3<f64> {
+fn refract(v: &Vector3<f64>, n: &Vector3<f64>, ni_over_nt: f64) -> Option<Vector3<f64>> {
     let c1 = -v.dot(*n);
-    let c2 = (1.0 - ni_over_nt * ni_over_nt * (1.0 - c1 * c1)).sqrt();
-    (ni_over_nt * v) + (ni_over_nt * c1 - c2) * n
+    let discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - c1 * c1);
+    if discriminant < 0.0 {
+        return None;
+    }
+    Some((ni_over_nt * v) + (ni_over_nt * c1 - discriminant.sqrt()) * n)
 }
 
 fn schlick(cos: f64, index: f64) -> f64 {
@@ -102,12 +94,8 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn scatter(&self, _: &ray::Ray, _: &Vector3<f64>, _: &Vector3<f64>) -> (ray::Ray, f64) {
-        //Terminate ray at light source.
-        (
-            ray::Ray::new_from(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0)),
-            0.0,
-        )
+    fn scatter(&self, _: &ray::Ray, _: &Vector3<f64>, _: &Vector3<f64>) -> Option<ray::Ray> {
+        None
     }
     fn emitted(&self) -> Vector3<f64> {
         self.light_color
@@ -134,14 +122,18 @@ impl MaterialsFactory {
         }
     }
 
-    pub fn get_material_by_key(&self, material_type: String) -> Arc<dyn Material> {
-        let res = self.materials_list.get(material_type.as_str());
+    pub fn get_material_by_key(&self, material_type: &str) -> &dyn Material {
+        let res = self.materials_list.get(material_type);
         match res {
-            Some(result) => result.clone(),
+            Some(result) => result.as_ref(),
             None => {
-                println!("Error, material '{material_type}' not found. Returning flat material");
-                self.materials_list.get("flat").unwrap().clone()
+                eprintln!("Unknown material '{material_type}'; using flat material");
+                self.materials_list["flat"].as_ref()
             }
         }
     }
 }
+
+#[cfg(test)]
+#[path = "material_tests.rs"]
+mod tests;

@@ -1,41 +1,41 @@
+use super::Result;
 use super::camera;
 use super::geometry;
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Vector3};
+use serde::Deserialize;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, BufReader, Read};
+use std::path::Path;
 use std::sync::Arc;
 
-use serde::Deserialize;
-use serde_json::*;
-
 #[derive(Deserialize, Debug)]
-pub struct Camera {
-    lookfrom: Vec<f64>,
-    lookat: Vec<f64>,
+struct Camera {
+    lookfrom: [f64; 3],
+    lookat: [f64; 3],
     fov: f64,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Plane {
-    origin: Vec<f64>,
-    normal: Vec<f64>,
-    color: Vec<f64>,
+struct Plane {
+    origin: [f64; 3],
+    normal: [f64; 3],
+    color: [f64; 3],
     mat: String,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Sphere {
-    color: Vec<f64>,
+struct Sphere {
+    color: [f64; 3],
     radius: f64,
-    center: Vec<f64>,
+    center: [f64; 3],
     mat: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct WorldJSON {
-    pub camera: Camera,
-    pub planes: Vec<Plane>,
-    pub spheres: Vec<Sphere>,
+struct WorldJson {
+    camera: Camera,
+    planes: Vec<Plane>,
+    spheres: Vec<Sphere>,
 }
 
 pub struct World {
@@ -44,53 +44,74 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(filename: &'static str, width: u32, height: u32) -> Result<World> {
-        let file = File::open(filename).unwrap();
-        let reader = BufReader::new(file);
+    pub fn new(filename: impl AsRef<Path>, width: u32, height: u32) -> Result<World> {
+        let path = filename.as_ref();
+        let file = File::open(path).map_err(|error| {
+            io::Error::new(
+                error.kind(),
+                format!("Cannot open scene '{}': {error}", path.display()),
+            )
+        })?;
+        Self::from_reader(BufReader::new(file), width, height).map_err(|error| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Invalid scene '{}': {error}", path.display()),
+            )
+            .into()
+        })
+    }
 
-        let json: WorldJSON = match serde_json::from_reader(reader) {
-            Ok(res) => res,
-            Err(e) => {
-                println!("Error parsing file: {e}");
-                return Err(e);
-            }
-        };
-
-        let json_cam = json.camera;
-        let lookfrom = Vector3::new(
-            json_cam.lookfrom[0],
-            json_cam.lookfrom[1],
-            json_cam.lookfrom[2],
-        );
-        let lookat = Vector3::new(json_cam.lookat[0], json_cam.lookat[1], json_cam.lookat[2]);
-
+    pub(super) fn from_reader(reader: impl Read, width: u32, height: u32) -> Result<World> {
+        if width == 0 || height == 0 {
+            return Err(invalid_scene("Image dimensions must be greater than zero").into());
+        }
+        let json: WorldJson = serde_json::from_reader(reader)?;
+        let lookfrom = checked_vector(json.camera.lookfrom, "Camera position")?;
+        let lookat = checked_vector(json.camera.lookat, "Camera target")?;
+        let view = lookfrom - lookat;
+        if !valid_direction(view) || !valid_direction(Vector3::unit_y().cross(view)) {
+            return Err(invalid_scene(
+                "Camera must have a nonzero view direction that is not parallel to its up vector",
+            )
+            .into());
+        }
+        if !json.camera.fov.is_finite() || json.camera.fov <= 0.0 || json.camera.fov >= 180.0 {
+            return Err(
+                invalid_scene("Camera field of view must be between 0 and 180 degrees").into(),
+            );
+        }
         let camera = camera::Camera::new(
             lookfrom,
             lookat,
-            Vector3::new(0.0, 1.0, 0.0),
-            json_cam.fov,
-            (width / height).into(),
+            Vector3::unit_y(),
+            json.camera.fov,
+            f64::from(width) / f64::from(height),
         );
 
-        let mut hitables: Vec<Arc<dyn geometry::Hitable>> = vec![];
+        let mut hitables: Vec<Arc<dyn geometry::Hitable>> = Vec::new();
         for plane in json.planes {
+            let normal = checked_vector(plane.normal, "Plane normal")?;
+            if !valid_direction(normal) {
+                return Err(invalid_scene("Plane normals must have nonzero finite length").into());
+            }
             hitables.push(Arc::new(geometry::Plane::new(
-                Vector3::new(plane.origin[0], plane.origin[1], plane.origin[2]),
-                Vector3::new(plane.normal[0], plane.normal[1], plane.normal[2]),
-                Vector3::new(plane.color[0], plane.color[1], plane.color[2]),
-                plane.mat.clone(),
+                checked_vector(plane.origin, "Plane origin")?,
+                normal.normalize(),
+                checked_color(plane.color)?,
+                plane.mat,
             )));
         }
-
         for sphere in json.spheres {
+            if sphere.radius <= 0.0 || !(sphere.radius * sphere.radius).is_finite() {
+                return Err(invalid_scene("Sphere radius must be positive and finite").into());
+            }
             hitables.push(Arc::new(geometry::Sphere::new(
-                Vector3::new(sphere.color[0], sphere.color[1], sphere.color[2]),
+                checked_color(sphere.color)?,
                 sphere.radius,
-                Vector3::new(sphere.center[0], sphere.center[1], sphere.center[2]),
-                sphere.mat.clone(),
+                checked_vector(sphere.center, "Sphere center")?,
+                sphere.mat,
             )));
         }
-
         Ok(World {
             camera: Arc::new(camera),
             hitables,
@@ -102,6 +123,33 @@ impl World {
     }
 
     pub fn get_camera(&self) -> Arc<camera::Camera> {
-        self.camera.clone()
+        Arc::clone(&self.camera)
     }
 }
+
+fn invalid_scene(message: impl Into<String>) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, message.into())
+}
+
+fn checked_vector(values: [f64; 3], name: &str) -> io::Result<Vector3<f64>> {
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_scene(format!("{name} must contain finite numbers")));
+    }
+    Ok(Vector3::from(values))
+}
+
+fn checked_color(values: [f64; 3]) -> io::Result<Vector3<f64>> {
+    if values.iter().any(|value| *value < 0.0) {
+        return Err(invalid_scene("Colors must be nonnegative"));
+    }
+    checked_vector(values, "Color")
+}
+
+fn valid_direction(direction: Vector3<f64>) -> bool {
+    let squared_length = direction.magnitude2();
+    squared_length.is_finite() && squared_length > 0.0
+}
+
+#[cfg(test)]
+#[path = "world_tests.rs"]
+mod tests;
