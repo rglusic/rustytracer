@@ -2,7 +2,8 @@
 
 RustyTracer estimates steady-state, unpolarized surface radiance in linear RGB.
 Scene coordinates and sphere radii are in metres. RGB channels approximate spectral
-transport; wavelength-dependent dispersion and polarization require a spectral model.
+transport. Wavelength-dependent dispersion requires spectral transport; polarization
+requires carrying the light's polarization state.
 
 ## Transport estimator
 
@@ -59,8 +60,7 @@ can be darker than a full multiple-scattering microsurface. No empirical energy
 boost or radiance clamp compensates for that omitted effect.
 
 Diffuse reflection is Lambertian, `albedo / pi`, sampled with `cos(theta) / pi`.
-Mirrors represent ideal wavelength-independent interfaces with the supplied RGB
-reflectance. Their constant reflectance is a declared ideal model, not a measured
+Mirrors represent ideal specular interfaces with the supplied RGB reflectance. Their constant reflectance is a declared ideal model, not a measured
 conductor. Smooth dielectrics use the exact unpolarized Fresnel equations, Snell's
 law, total internal reflection, and the radiance transmission factor
 `(eta_incident / eta_transmitted)^2`.
@@ -128,7 +128,9 @@ absorption, invalid scenes, HDR round trips, and ray spawning across scales from
 irradiance, and an emitting diffuse cavity with `L = Le / (1 - reflectance)`.
 The cavity exercises compensated roulette and demonstrates the bias of an explicit
 depth cap. Actual GPU tests include resuming unfinished cavity paths, nested glass,
-rough conductors, and both traversal modes, under Apple API/shader validation.
+rough conductors, and both traversal modes, under Apple API/shader validation. A
+camera at the centre of an absorbing glass sphere is checked against its analytic
+internal-reflection series, including the initial medium and radiance scaling.
 
 ```sh
 python3 scripts/validate_physics.py
