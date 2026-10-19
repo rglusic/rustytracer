@@ -13,6 +13,7 @@ pub struct Renderer {
     pub device: String,
     pub traversal: String,
     pub setup_seconds: f64,
+    resolution: (u32, u32),
     #[cfg(all(target_os = "macos", feature = "metal"))]
     gpu: Option<super::metal::MetalRenderer>,
 }
@@ -30,6 +31,7 @@ impl Renderer {
             device: "CPU (f64)".to_owned(),
             traversal: "linear".to_owned(),
             setup_seconds: 0.0,
+            resolution: (settings.image.width, settings.image.height),
             #[cfg(all(target_os = "macos", feature = "metal"))]
             gpu: None,
         };
@@ -53,6 +55,9 @@ impl Renderer {
                 io::Error::other("Metal requires macOS and the metal Cargo feature").into(),
             );
         }
+        if renderer.backend == Backend::Cpu && settings.traversal == super::Traversal::Hardware {
+            return Err(io::Error::other("Hardware traversal requires the Metal backend").into());
+        }
         renderer.setup_seconds = started.elapsed().as_secs_f64();
         Ok(renderer)
     }
@@ -66,6 +71,11 @@ impl Renderer {
 
     pub fn render(&mut self, settings: Settings) -> Result<Frame> {
         settings.validate()?;
+        if (settings.image.width, settings.image.height) != self.resolution {
+            return Err(
+                io::Error::other("Renderer resolution cannot change after initialization").into(),
+            );
+        }
         #[cfg(all(target_os = "macos", feature = "metal"))]
         if let Some(gpu) = &mut self.gpu {
             return gpu.render(settings);

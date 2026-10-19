@@ -19,7 +19,10 @@ unsafe extern "C" {}
 type MetalObject<T> = Retained<ProtocolObject<T>>;
 
 pub(super) fn default_device() -> Option<MetalObject<dyn MTLDevice>> {
-    MTLCreateSystemDefaultDevice()
+    if !objc2::available!(macos = 15.0) {
+        return None;
+    }
+    MTLCreateSystemDefaultDevice().filter(|device| device.hasUnifiedMemory())
 }
 
 pub(super) struct MetalRenderer {
@@ -140,6 +143,7 @@ impl MetalRenderer {
     }
 
     pub fn render(&mut self, settings: Settings) -> Result<Frame> {
+        settings.validate()?;
         autoreleasepool(|_| self.render_inner(settings))
     }
 
@@ -215,6 +219,9 @@ impl MetalRenderer {
             if let Some(error) = command.error() {
                 return Err(io::Error::other(format!("Metal command failed: {error}")).into());
             }
+            if command.status() != MTLCommandBufferStatus::Completed {
+                return Err(io::Error::other("Metal command did not complete successfully").into());
+            }
             gpu_seconds += command.GPUEndTime() - command.GPUStartTime();
             if settings.progress {
                 eprintln!(
@@ -262,7 +269,10 @@ fn buffer_from_slice<T: bytemuck::Pod>(
     let bytes: &[u8] = bytemuck::cast_slice(values);
     if bytes.is_empty() {
         return device
-            .newBufferWithLength_options(16, MTLResourceOptions::StorageModeShared)
+            .newBufferWithLength_options(
+                size_of::<T>().max(16),
+                MTLResourceOptions::StorageModeShared,
+            )
             .ok_or_else(|| io::Error::other("Could not allocate empty Metal buffer").into());
     }
     // SAFETY: Metal copies the valid POD slice before this call returns.

@@ -1,5 +1,5 @@
 use crate::cli::Cli;
-use crate::tracer::{Renderer, Result};
+use crate::tracer::{Renderer, Result, Settings};
 use serde::Serialize;
 use std::fs;
 use std::io;
@@ -36,25 +36,18 @@ pub fn run(cli: Cli) -> Result<()> {
         "{}; traversal {}; setup {:.3}s",
         renderer.device, renderer.traversal, renderer.setup_seconds
     );
-    for _ in 0..cli.warmup {
-        renderer.render(settings)?;
+    let mut cold_seconds = None;
+    for index in 0..cli.warmup {
+        let frame = renderer.render(settings)?;
+        if index == 0 {
+            let run = encode_frame(frame, settings, &cli.output, format)?;
+            cold_seconds = Some(renderer.setup_seconds + run.render_and_encoding_seconds);
+        }
     }
     let mut runs = Vec::new();
     for index in 0..cli.benchmark {
         let frame = renderer.render(settings)?;
-        let encoding = Instant::now();
-        frame
-            .image(settings.image)?
-            .save_with_format(&cli.output, format)?;
-        let encoding_seconds = encoding.elapsed().as_secs_f64();
-        let samples = f64::from(cli.width) * f64::from(cli.height) * f64::from(cli.samples);
-        let run = Run {
-            render_seconds: frame.render_seconds,
-            gpu_seconds: frame.gpu_seconds,
-            encoding_seconds,
-            render_and_encoding_seconds: frame.render_seconds + encoding_seconds,
-            samples_per_second: samples / frame.render_seconds,
-        };
+        let run = encode_frame(frame, settings, &cli.output, format)?;
         eprintln!(
             "Run {}: render {:.4}s, encode {:.4}s, {:.2} million samples/s",
             index + 1,
@@ -85,7 +78,7 @@ pub fn run(cli: Cli) -> Result<()> {
         "spheres": spheres,
         "planes": planes,
         "setup_seconds": renderer.setup_seconds,
-        "cold_end_to_end_seconds": renderer.setup_seconds + runs[0].render_and_encoding_seconds,
+        "cold_end_to_end_seconds": cold_seconds.unwrap_or(renderer.setup_seconds + runs[0].render_and_encoding_seconds),
         "median_render_and_encoding_seconds": median,
         "p95_render_and_encoding_seconds": p95,
         "warmup_runs": cli.warmup,
@@ -101,6 +94,29 @@ pub fn run(cli: Cli) -> Result<()> {
         median
     );
     Ok(())
+}
+
+fn encode_frame(
+    frame: crate::tracer::Frame,
+    settings: Settings,
+    path: &Path,
+    format: image::ImageFormat,
+) -> Result<Run> {
+    let encoding = Instant::now();
+    frame
+        .image(settings.image)?
+        .save_with_format(path, format)?;
+    let encoding_seconds = encoding.elapsed().as_secs_f64();
+    let samples = f64::from(settings.image.width)
+        * f64::from(settings.image.height)
+        * f64::from(settings.image.samples_per_pixel);
+    Ok(Run {
+        render_seconds: frame.render_seconds,
+        gpu_seconds: frame.gpu_seconds,
+        encoding_seconds,
+        render_and_encoding_seconds: frame.render_seconds + encoding_seconds,
+        samples_per_second: samples / frame.render_seconds,
+    })
 }
 
 fn create_parent(path: &Path) -> io::Result<()> {

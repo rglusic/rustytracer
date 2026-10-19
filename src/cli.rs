@@ -59,3 +59,45 @@ impl Cli {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_invalid_workloads_and_backend_names() {
+        for arguments in [
+            vec!["--width", "0"],
+            vec!["--samples", "0"],
+            vec!["--backend", "vulkan"],
+            vec!["--batch-size", "0"],
+            vec!["--benchmark", "0"],
+            vec!["--max-bounces", "257"],
+        ] {
+            assert!(Cli::try_parse_from(std::iter::once("rustytracer").chain(arguments)).is_err());
+        }
+    }
+
+    #[test]
+    fn preserves_explicit_backend_and_deterministic_settings() {
+        let cli = Cli::try_parse_from([
+            "rustytracer",
+            "--backend",
+            "metal",
+            "--traversal",
+            "hardware",
+            "--seed",
+            "42",
+            "--width",
+            "1920",
+            "--height",
+            "1080",
+        ])
+        .unwrap();
+        let settings = cli.settings();
+        assert_eq!(settings.backend, Backend::Metal);
+        assert_eq!(settings.traversal, Traversal::Hardware);
+        assert_eq!(settings.seed, 42);
+        assert_eq!(settings.image.width, 1920);
+    }
+}

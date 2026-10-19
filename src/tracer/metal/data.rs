@@ -48,6 +48,17 @@ impl SceneData {
         for (packed, vector) in camera.iter_mut().zip(world.get_camera().vectors()) {
             *packed = pack(vector, 0.0)?;
         }
+        let center_direction = Vector3::new(
+            camera[1][0] + 0.5 * camera[2][0] + 0.5 * camera[3][0] - camera[0][0],
+            camera[1][1] + 0.5 * camera[2][1] + 0.5 * camera[3][1] - camera[0][1],
+            camera[1][2] + 0.5 * camera[2][2] + 0.5 * camera[3][2] - camera[0][2],
+        );
+        if !center_direction.magnitude2().is_normal() {
+            return Err(io::Error::other(
+                "Camera direction loses precision in Metal's f32 representation",
+            )
+            .into());
+        }
         let spheres = description
             .spheres
             .iter()
@@ -115,5 +126,16 @@ fn material_id(name: &str) -> u32 {
         "glass" => 2,
         "diffuse_light" => 3,
         _ => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_values_outside_gpu_range() {
+        assert!(pack([1e100, 0.0, 0.0], 0.0).is_err());
+        assert!(pack([f64::NAN, 0.0, 0.0], 0.0).is_err());
     }
 }

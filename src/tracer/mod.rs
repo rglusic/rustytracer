@@ -21,6 +21,7 @@ use std::time::Instant;
 #[cfg(all(target_os = "macos", feature = "metal"))]
 use objc2_metal::MTLDevice;
 
+pub use frame::Frame;
 pub use render::RenderOptions;
 pub use renderer::Renderer;
 pub use settings::{Backend, Settings, Traversal};

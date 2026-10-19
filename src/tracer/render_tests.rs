@@ -128,3 +128,39 @@ fn worker_panics_are_returned_as_errors() {
     );
     assert!(result.unwrap_err().to_string().contains("worker panicked"));
 }
+
+#[test]
+fn cpu_samples_are_reproducible_across_worker_counts() {
+    let options = RenderOptions {
+        width: 19,
+        height: 11,
+        samples_per_pixel: 17,
+    };
+    let world = crate::tracer::world::World::from_reader(
+        include_bytes!("../../worlds/closed_room.json").as_slice(),
+        options.width,
+        options.height,
+    )
+    .unwrap();
+    let scene = Scene::new(world.get_hitables());
+    let settings = Settings {
+        image: options,
+        seed: 42,
+        ..Settings::default()
+    };
+    let expected = render_linear(&scene, &world.get_camera(), settings, 1).unwrap();
+    for workers in [2, 8, 32] {
+        assert_eq!(
+            expected,
+            render_linear(&scene, &world.get_camera(), settings, workers).unwrap()
+        );
+    }
+    let different_seed = Settings {
+        seed: 43,
+        ..settings
+    };
+    assert_ne!(
+        expected,
+        render_linear(&scene, &world.get_camera(), different_seed, 8).unwrap()
+    );
+}

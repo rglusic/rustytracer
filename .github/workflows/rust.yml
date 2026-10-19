@@ -20,6 +20,7 @@ jobs:
           components: rustfmt, clippy
       - run: cargo +1.99.1 fmt --all -- --check
       - run: cargo +1.99.1 clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo +1.99.1 clippy --locked --no-default-features --all-targets -- -D warnings
 
   test:
     name: Rust ${{ matrix.rust }} on ${{ matrix.os }}
@@ -43,4 +44,11 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
       - run: cargo +${{ matrix.rust }} test --locked --all-targets --all-features
+      - run: cargo +${{ matrix.rust }} test --locked --all-targets --no-default-features
       - run: cargo +${{ matrix.rust }} build --release --locked
+      - name: Install Metal compiler
+        if: runner.os == 'macOS'
+        run: xcodebuild -downloadComponent metalToolchain
+      - name: Compile Metal shaders
+        if: runner.os == 'macOS'
+        run: python3 scripts/check_shaders.py

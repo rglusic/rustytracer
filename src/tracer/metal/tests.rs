@@ -214,3 +214,62 @@ fn gpu_handles_tiny_images_empty_scenes_and_emitters() {
         }
     }
 }
+
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_mixed_material_scene_matches_cpu() {
+    let config = settings(64, 40, 512, Traversal::Hardware);
+    let mut value: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../worlds/closed_room.json")).unwrap();
+    let spheres = value["spheres"].as_array_mut().unwrap();
+    for (x, material) in [(-2.0, "metal"), (2.0, "flat")] {
+        spheres.push(
+            json!({"center": [x,0,0], "radius": 0.8, "color": [0.7,0.8,0.9], "mat": material}),
+        );
+    }
+    let world = World::from_reader(value.to_string().as_bytes(), 64, 40).unwrap();
+    let scene = crate::tracer::scene::Scene::new(world.get_hitables());
+    let cpu = crate::tracer::render::render_linear(&scene, &world.get_camera(), config, 8).unwrap();
+    let actual = gpu(&world, config).render(config).unwrap();
+    let error = actual
+        .linear
+        .iter()
+        .zip(&cpu)
+        .flat_map(|(a, b)| (0..3).map(move |i| f64::from((a[i] - b[i]).abs())))
+        .sum::<f64>()
+        / (cpu.len() * 3) as f64;
+    assert!(error < 0.002, "Mixed-material error {error}");
+}
+
+#[test]
+#[ignore = "Requires an Apple GPU"]
+fn gpu_rejects_invalid_dispatch_settings_and_resolution_changes() {
+    let config = settings(3, 2, 1, Traversal::Linear);
+    let world = room(config);
+    let mut renderer = gpu(&world, config);
+    assert!(
+        renderer
+            .render(Settings {
+                batch_size: 0,
+                ..config
+            })
+            .is_err()
+    );
+    assert!(
+        renderer
+            .render(Settings {
+                threadgroup_size: 1,
+                ..config
+            })
+            .is_err()
+    );
+    let different = Settings {
+        image: RenderOptions {
+            width: 2,
+            height: 3,
+            samples_per_pixel: 1,
+        },
+        ..config
+    };
+    assert!(renderer.render(different).is_err());
+}
