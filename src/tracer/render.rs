@@ -4,8 +4,6 @@ use super::sampler::Sampler;
 use super::scene::Scene;
 use super::settings::Settings;
 use cgmath::Vector3;
-#[cfg(test)]
-use image::RgbImage;
 use serde::Serialize;
 use std::io;
 use std::thread;
@@ -38,27 +36,6 @@ impl RenderOptions {
         }
         Ok(())
     }
-}
-
-#[cfg(test)]
-pub(super) fn render(scene: &Scene, camera: &Camera, options: RenderOptions) -> Result<RgbImage> {
-    let workers = thread::available_parallelism().map_or(1, |count| count.get());
-    render_with_workers(scene, camera, options, workers)
-}
-
-#[cfg(test)]
-fn render_with_workers(
-    scene: &Scene,
-    camera: &Camera,
-    options: RenderOptions,
-    workers: usize,
-) -> Result<RgbImage> {
-    let settings = Settings {
-        image: options,
-        ..Settings::default()
-    };
-    let linear = render_linear(scene, camera, settings, workers)?;
-    super::frame::to_rgb(&linear, options)
 }
 
 pub(super) fn render_linear(

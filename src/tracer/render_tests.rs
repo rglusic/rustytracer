@@ -170,3 +170,17 @@ fn cpu_samples_are_reproducible_across_worker_counts() {
         render_linear(&scene, &world.get_camera(), different_seed, 8).unwrap()
     );
 }
+
+fn render_with_workers(
+    scene: &Scene,
+    camera: &Camera,
+    options: RenderOptions,
+    workers: usize,
+) -> Result<image::RgbImage> {
+    let settings = Settings {
+        image: options,
+        ..Settings::default()
+    };
+    let linear = render_linear(scene, camera, settings, workers)?;
+    crate::tracer::frame::to_rgb(&linear, options)
+}
