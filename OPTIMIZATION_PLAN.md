@@ -137,6 +137,21 @@ A GPU zero-absorption branch gave no clear gain and was removed; GPU Beer
 attenuation retains its original expression. CPU/GPU transport equations remain
 unchanged. Final benchmarks will measure the retained implementation together.
 
+Milestone 3 completed: Metal buffers, pipeline preparation, and dispatch each have
+their own modules. Shaders are formatted and organized by sampling, geometry,
+BSDFs, direct lighting, and path advancement. A source manifest drives both the
+Rust embedding build and standalone compiler check. Named material and path fields
+retain their layouts, with additional offset assertions. GPU tests are grouped by
+geometry, scheduling, and transport; benchmark tools share invocation/report code.
+The inactive legacy stubs were removed, and ray/camera names and architecture
+documentation were clarified.
+
+Rust 1.99.1 and Rust 1.88 tests pass with and without Metal. Strict Clippy and
+format checks pass, as do all 14 GPU tests with Metal API/shader validation. The
+final CPU and both GPU images have exactly zero MSE against the original EXRs.
+The analytical/PBRT validation reproduces its previous results, including PBRT
+reference MSE 0.0000011811. Final sequential timings and CI results are pending.
+
 ## References checked during investigation
 
 - [Apple: shadow queries accepting any intersection](https://developer.apple.com/videos/play/wwdc2021/10150/)

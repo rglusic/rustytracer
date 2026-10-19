@@ -158,7 +158,7 @@ rustup run 1.99.1 cargo clippy --locked --all-targets --no-default-features -- -
 rustup run 1.99.1 cargo test --locked --all-features
 rustup run 1.99.1 cargo test --locked --no-default-features
 xcodebuild -downloadComponent metalToolchain
-python3 scripts/check_shaders.py
+python3 scripts/check_shaders.py --check-format
 MTL_DEBUG_LAYER=1 MTL_SHADER_VALIDATION=1 \
   rustup run 1.99.1 cargo test --locked --all-features -- \
   --ignored --test-threads=1 --nocapture
@@ -173,22 +173,41 @@ macOS also compiles Metal shaders. GPU runtime tests run explicitly on hardware.
 
 To omit Apple GPU dependencies, build with `--no-default-features`.
 
+Metal sources follow the repository's `.clang-format` configuration. Run
+`python3 scripts/check_shaders.py --format` to format and compile them with the
+Xcode tools. Compiler module caches stay under `target/shader-check`.
+
+The tuning script accepts scene, traversal, resolution, sample count, repeat count,
+and sweep ranges. For example, after generating dense scenes with the benchmark:
+
+```sh
+python3 scripts/tune_metal.py --scene target/performance-physics/spheres-4096.json \
+  --traversal hardware --width 640 --height 360 --samples 128 \
+  --batches 16 32 64 --threads 64 128
+```
+
 ## Architecture
 
 - `world.rs`, `material_input.rs`: validated scene and physical material contract.
 - `material.rs`, `scene.rs`, `light_sampling.rs`: f64 BSDFs, transport, and MIS.
 - `geometry.rs`: intersections, projected hit points, and secondary-ray spawning.
+- `media.rs`: prepared dielectric hierarchy and CPU medium transitions.
 - `render.rs`, `sampler.rs`: deterministic per-pixel/sample CPU work and RNG.
 - `metal/data.rs`: checked POD layouts and medium/light metadata.
-- `metal/mod.rs`, `metal/acceleration.rs`: Metal resources, continuations, and traversal.
-- `metal/shaders/`: shared physical BSDF/integrator with two query implementations.
+- `metal/mod.rs`: render orchestration and resumable sample batches.
+- `metal/buffers.rs`, `metal/dispatch.rs`: owned GPU storage and command encoding.
+- `metal/pipeline.rs`, `metal/acceleration.rs`: shader pipelines and hardware traversal.
+- `metal/shaders/`: shared types, sampling, geometry, BSDFs, lighting, and path advancement.
+- `metal/tests/`: GPU geometry, scheduling, and physical transport tests.
+- `build.rs`, `metal/shaders/sources.txt`: one source order for embedded and offline shader compilation.
+- `scripts/benchmark_common.py`: shared command execution and timing-report handling.
 - `frame.rs`: radiance validation, float EXR, exposure, and sRGB display encoding.
 
 GPU scene resources remain resident. The persistent path state uses 128 bytes per
 pixel, plus a 16-byte radiance accumulation buffer. CPU reads follow command
 completion. Unsafe interop is isolated in the Metal module, with host layout tests
-and shader static assertions. Historical `light.rs`, `photonmap.rs`, and
-`spectral.rs` experiments remain outside the active module tree.
+and shader static assertions. Material and continuation fields have explicit names
+and tested offsets while retaining the 96-byte material and 128-byte path layouts.
 
 ## License
 

@@ -1,11 +1,10 @@
-use cgmath::*;
-//use cgmath::prelude::*;
 use super::ray;
+use cgmath::{InnerSpace, Vector3};
 use std::f64;
 
 pub struct Camera {
     origin: Vector3<f64>,
-    lower_left_corner: Vector3<f64>,
+    top_left: Vector3<f64>,
     horizontal: Vector3<f64>,
     vertical: Vector3<f64>,
 }
@@ -26,10 +25,11 @@ impl Camera {
         let w = w / w.magnitude();
         let u = vup.cross(w);
         let u = u / u.magnitude();
-        let v = -w.cross(u); //Negative due to the coordinate system used by image formats being used.
+        // Image coordinates increase downwards from the top-left corner.
+        let v = -w.cross(u);
 
         Camera {
-            lower_left_corner: lookfrom - half_width * u - half_height * v - w,
+            top_left: lookfrom - half_width * u - half_height * v - w,
             horizontal: 2.0 * half_width * u,
             vertical: 2.0 * half_height * v,
             origin: lookfrom,
@@ -39,7 +39,7 @@ impl Camera {
     pub fn get_ray(&self, u: f64, v: f64) -> ray::Ray {
         ray::Ray::new_from(
             self.origin,
-            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            self.top_left + u * self.horizontal + v * self.vertical - self.origin,
         )
     }
 
@@ -47,7 +47,7 @@ impl Camera {
     pub(super) fn vectors(&self) -> [[f64; 3]; 4] {
         [
             self.origin.into(),
-            self.lower_left_corner.into(),
+            self.top_left.into(),
             self.horizontal.into(),
             self.vertical.into(),
         ]

@@ -6,10 +6,7 @@ import json
 import math
 import platform
 from pathlib import Path
-import subprocess
-
-
-ROOT = Path(__file__).resolve().parents[1]
+from benchmark_common import DEFAULT_BINARY, ROOT, render_report, write_json
 
 
 def sphere_scene(count):
@@ -37,7 +34,7 @@ def sphere_scene(count):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=ROOT / "target/release/rustytracer")
+    parser.add_argument("--binary", type=Path, default=DEFAULT_BINARY)
     parser.add_argument("--output", type=Path, default=ROOT / "target/performance-physics")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--warmup", type=int, default=1)
@@ -70,21 +67,15 @@ def main():
             modes.insert(0, ("cpu", "linear"))
         for backend, traversal in modes:
             stem = f"{name}-{backend}-{traversal}"
-            metrics = args.output / f"{stem}.json"
-            command = [str(args.binary.resolve()), "--scene", str(scene),
-                       "--backend", backend, "--traversal", traversal,
-                       "--width", str(width), "--height", str(height),
-                       "--samples", str(samples), "--seed", "42",
-                       "--benchmark", str(args.repeats), "--warmup", str(args.warmup),
-                       "--output", str(args.output / f"{stem}.png"),
-                       "--metrics", str(metrics)]
-            subprocess.run(command, cwd=ROOT, check=True)
-            report = json.loads(metrics.read_text())
+            report = render_report(
+                args.binary, scene, args.output / f"{stem}.png",
+                backend=backend, traversal=traversal, width=width, height=height,
+                samples=samples, repeats=args.repeats, warmup=args.warmup,
+            )
             report["case"] = name
-            report["command"] = command
             results.append(report)
     summary = {"platform": platform.platform(), "results": results}
-    (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    write_json(args.output / "summary.json", summary)
     for report in results:
         print(f"{report['case']:14s} {report['backend']:5s} {report['traversal']:8s} "
               f"median {report['median_render_and_encoding_seconds']:.6f}s")

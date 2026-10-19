@@ -13,7 +13,10 @@ pub struct Material {
     pub eta_roughness: [f32; 4],
     pub k_ior: [f32; 4],
     pub absorption: [f32; 4],
-    pub flags: [u32; 4],
+    pub kind: u32,
+    pub two_sided: u32,
+    pub parent_medium: u32,
+    pub reserved: u32,
 }
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -55,9 +58,15 @@ pub struct PathState {
     pub beta: [f32; 4],
     pub radiance: [f32; 4],
     pub previous_point: [f32; 4],
-    pub counters: [u32; 4],
-    pub medium: [u32; 4],
-    pub weights: [f32; 4],
+    pub rng: u32,
+    pub depth: u32,
+    pub completed_samples: u32,
+    pub previous_delta: u32,
+    pub medium_id: u32,
+    pub reserved_medium: [u32; 3],
+    pub eta_scale: f32,
+    pub previous_pdf: f32,
+    pub reserved_weights: [f32; 2],
 }
 pub struct SceneData {
     pub spheres: Vec<Sphere>,
@@ -117,7 +126,7 @@ impl SceneData {
         let mut camera_medium = 0;
         let mut camera_radius = f64::INFINITY;
         for i in 0..spheres.len() {
-            if spheres[i].material.flags[0] != Kind::Dielectric as u32 {
+            if spheres[i].material.kind != Kind::Dielectric as u32 {
                 continue;
             }
             let a = &d.spheres[i];
@@ -140,7 +149,7 @@ impl SceneData {
                 );
             }
             for (j, b) in spheres.iter().enumerate() {
-                if i == j || b.material.flags[0] != Kind::Dielectric as u32 {
+                if i == j || b.material.kind != Kind::Dielectric as u32 {
                     continue;
                 }
                 let center =
@@ -160,7 +169,7 @@ impl SceneData {
             let mut parent_radius = f64::INFINITY;
             for (j, b) in d.spheres.iter().enumerate() {
                 if i != j
-                    && spheres[j].material.flags[0] == Kind::Dielectric as u32
+                    && spheres[j].material.kind == Kind::Dielectric as u32
                     && b.radius < parent_radius
                     && (Vector3::from(a.center) - Vector3::from(b.center)).magnitude() + a.radius
                         < b.radius
@@ -169,7 +178,7 @@ impl SceneData {
                     parent_radius = b.radius;
                 }
             }
-            spheres[i].material.flags[2] = parent;
+            spheres[i].material.parent_medium = parent;
             if a.radius < camera_radius
                 && (Vector3::from(d.camera.lookfrom) - Vector3::from(a.center)).magnitude()
                     < a.radius
@@ -224,7 +233,10 @@ fn material(m: CpuMaterial) -> Result<Material> {
         eta_roughness: pack(m.eta.into(), m.roughness)?,
         k_ior: pack(m.k.into(), m.ior)?,
         absorption: pack(m.absorption.into(), 0.)?,
-        flags: [m.kind as u32, m.two_sided.into(), 0, 0],
+        kind: m.kind as u32,
+        two_sided: m.two_sided.into(),
+        parent_medium: 0,
+        reserved: 0,
     };
     if m.kind == Kind::Conductor
         && result.eta_roughness[..3]

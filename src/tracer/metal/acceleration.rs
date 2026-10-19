@@ -1,5 +1,6 @@
+use super::MetalObject;
+use super::buffers::buffer_from_slice;
 use super::data::Sphere;
-use super::{MetalObject, buffer_from_slice};
 use crate::tracer::Result;
 use bytemuck::{Pod, Zeroable};
 use objc2_foundation::{NSArray, NSString};

@@ -4,33 +4,20 @@ import argparse
 import json
 from pathlib import Path
 import statistics
-import subprocess
-
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def run(command):
-    result = subprocess.run([str(x) for x in command], cwd=ROOT, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(f"Command failed: {command[0]}\n{result.stdout}\n{result.stderr}")
+from benchmark_common import DEFAULT_BINARY, ROOT, render_report, run_command, write_json
 
 
 def render(binary, scene, output, backend, traversal, samples, seed, reference=None, mis=True):
-    metrics = output.with_suffix('.json')
-    command = [binary, '--scene', scene, '--backend', backend, '--traversal', traversal,
-               '--width', '16', '--height', '16', '--samples', str(samples), '--seed', str(seed),
-               '--output', output, '--metrics', metrics]
-    if reference:
-        command += ['--reference', reference]
-    if not mis:
-        command += ['--no-light-sampling']
-    run(command)
-    return json.loads(metrics.read_text())
+    return render_report(
+        binary, scene, output, backend=backend, traversal=traversal,
+        width=16, height=16, samples=samples, seed=seed,
+        reference=reference, mis=mis, quiet=True,
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--binary', type=Path, default=ROOT / 'target/release/rustytracer')
+    parser.add_argument('--binary', type=Path, default=DEFAULT_BINARY)
     parser.add_argument('--output', type=Path, default=ROOT / 'target/physics-validation')
     parser.add_argument('--pbrt', type=Path, help='PBRT v3 executable, built in RGB mode')
     parser.add_argument('--cpu-only', action='store_true')
@@ -85,7 +72,7 @@ def main():
         pbrt_output = out / 'pbrt.exr'
         pbrt_path = out / 'sphere-light.pbrt'
         pbrt_path.write_text(pbrt_scene.replace('REFERENCE_OUTPUT.exr', str(pbrt_output)))
-        run([args.pbrt.resolve(), '--quiet', '--nthreads', '8', pbrt_path])
+        run_command([args.pbrt.resolve(), '--quiet', '--nthreads', '8', pbrt_path], quiet=True)
         report = render(binary, scene_path, out / 'rustytracer-vs-pbrt.exr', 'cpu', 'linear',
                         32768, 42, reference=pbrt_output)
         mse = report['runs'][0]['radiance_mse']
@@ -93,7 +80,7 @@ def main():
         summary['pbrt_comparison'] = {'pbrt_version': 3, 'pbrt_samples': 32768,
                                       'rustytracer_samples': 32768, 'radiance_mse': mse}
         print(f'PBRT v3 independent reference MSE={mse:.8g}', flush=True)
-    (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+    write_json(out / 'summary.json', summary)
 
 
 if __name__ == '__main__':

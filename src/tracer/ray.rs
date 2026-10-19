@@ -1,25 +1,24 @@
-use cgmath::*;
-//use cgmath::prelude::*;
+use cgmath::Vector3;
 
 pub struct Ray {
-    a: Vector3<f64>,
-    b: Vector3<f64>,
+    origin: Vector3<f64>,
+    direction: Vector3<f64>,
 }
 
 impl Ray {
-    pub fn new_from(a: Vector3<f64>, b: Vector3<f64>) -> Ray {
-        Ray { a, b }
+    pub fn new_from(origin: Vector3<f64>, direction: Vector3<f64>) -> Ray {
+        Ray { origin, direction }
     }
 
     pub fn origin(&self) -> &Vector3<f64> {
-        &self.a
+        &self.origin
     }
 
     pub fn direction(&self) -> &Vector3<f64> {
-        &self.b
+        &self.direction
     }
 
     pub fn point_at_parameter(&self, t: f64) -> Vector3<f64> {
-        self.a + t * self.b
+        self.origin + t * self.direction
     }
 }

@@ -1,108 +1,117 @@
-// Query supplies the same intersection semantics for direct and accelerated traversal.
-float environment_pdf(constant Parameters &p) { return any(p.environment.xyz>0) ? 1/(4*PI*p.light_count) : 0; }
-float endpoint_pdf(Hit h,Surface s,float3 from,constant Parameters &p,device const Sphere *spheres,device const Plane *planes) {
-    if(!any(hit_material(h,spheres,planes).emission.xyz>0)) return 0;
-    if(!h.sphere) return 1/(4*PI*p.light_count);
-    float3 delta=s.point-from;
-    float cosine=abs(dot(s.normal,-normalize(delta))),r=spheres[h.index].center_radius.w;
-    return cosine==0 ? 0 : dot(delta,delta)/(4*PI*r*r*cosine*p.light_count);
+// Persistent path advancement. Dispatch limits schedule work without truncation.
+void initialize_path(thread PathState &path, uint pixel, uint sample, constant Parameters &p) {
+    uint rng = sample_seed(p.seed, pixel, sample);
+    path.origin = float4(p.camera[0].xyz, 0);
+    path.direction = float4(primary_direction(pixel, p, rng), 0);
+    path.beta = float4(1, 1, 1, 0);
+    path.radiance = 0;
+    path.previous_point = path.origin;
+    path.rng = rng;
+    path.depth = 0;
+    path.completed_samples = sample;
+    path.previous_delta = 1;
+    path.medium_id = p.camera_medium;
+    path.eta_scale = 1;
+    path.previous_pdf = 0;
+    for (uint i = 0; i < 3; ++i)
+        path.reserved_medium[i] = 0;
+    for (uint i = 0; i < 2; ++i)
+        path.reserved_weights[i] = 0;
 }
-template<typename Query>
-float3 direct_light(Query query,Surface s,float3 wo,float3 n,Material m,float3 absorption,constant Parameters &p,
-                    device const Sphere *spheres,device const Plane *planes,device const uint4 *lights,thread uint &rng) {
-    if(p.light_count==0) return 0;
-    uint selected=min(uint(random_value(rng)*p.light_count),p.light_count-1);
-    uint4 light=lights[selected];
-    float u=random_value(rng),v=random_value(rng);
-    float3 wi=uniform_sphere(u,v),le;
-    float distance=INFINITY,pdf=1/(4*PI*p.light_count);
-    if(light.x==2) {
-        if(query.occluded(offset_origin(s,wi),wi)) return 0;
-        le=p.environment.xyz;
-    } else if(light.x==1) {
-        Hit h=query.intersect(offset_origin(s,wi),wi);
-        if(!h.found || h.sphere || h.index!=light.y) return 0;
-        le=emitted(planes[light.y].material,h.normal,-wi); distance=h.distance;
-    } else {
-        Sphere sphere=spheres[light.y];
-        float3 normal=wi,point=sphere.center_radius.xyz+sphere.center_radius.w*normal;
-        float3 delta=point-s.point; distance=length(delta);
-        if(distance==0) return 0;
-        wi=delta/distance;
-        float cosine=abs(dot(normal,-wi));
-        if(cosine==0) return 0;
-        pdf*=distance*distance/(sphere.center_radius.w*sphere.center_radius.w*cosine);
-        Surface target={point,normal,(abs(sphere.center_radius.xyz)+abs(point)+sphere.center_radius.w)*gamma_error()};
-        float3 from=offset_origin(s,wi),to=offset_origin(target,-wi),shadow=to-from;
-        if(query.occluded(from,normalize(shadow),length(shadow))) return 0;
-        le=emitted(sphere.material,normal,-wi);
+template <typename Query>
+bool advance_path(thread PathState &path, Query query, constant Parameters &p,
+                  device const Sphere *spheres, device const Plane *planes,
+                  device const uint4 *lights) {
+    float eta_i = path.medium_id ? spheres[path.medium_id - 1].material.k_ior.w : 1;
+    float3 absorption =
+        path.medium_id ? spheres[path.medium_id - 1].material.absorption.xyz : float3(0);
+    Hit hit = query.intersect(path.origin.xyz, path.direction.xyz);
+    if (!hit.found) {
+        float weight = path.previous_delta || !p.light_sampling
+                           ? 1
+                           : power_heuristic(path.previous_pdf, environment_pdf(p));
+        path.radiance.xyz += path.beta.xyz * p.environment.xyz * weight;
+        return true;
     }
-    Evaluation e=evaluate_bsdf(m,wo,wi,n);
-    if(e.pdf==0) return 0;
-    float3 transmittance=isfinite(distance) ? exp(-absorption*distance) : select(float3(0),float3(1),absorption==0);
-    return e.value*le*transmittance*(abs(dot(n,wi))*power_heuristic(pdf,e.pdf)/pdf);
-}
-void initialize_path(thread PathState &s,uint pixel,uint sample,constant Parameters &p) {
-    uint rng=sample_seed(p.seed,pixel,sample);
-    s.origin=float4(p.camera[0].xyz,0); s.direction=float4(primary_direction(pixel,p,rng),0);
-    s.beta=float4(1,1,1,0); s.radiance=0; s.previous_point=s.origin;
-    s.counters=uint4(rng,0,sample,1); s.medium=uint4(p.camera_medium,0,0,0); s.weights=float4(1,0,0,0);
-}
-template<typename Query>
-bool advance_path(thread PathState &s,Query query,constant Parameters &p,device const Sphere *spheres,
-                  device const Plane *planes,device const uint4 *lights) {
-    float eta_i=s.medium.x ? spheres[s.medium.x-1].material.k_ior.w : 1;
-    float3 absorption=s.medium.x ? spheres[s.medium.x-1].material.absorption.xyz : float3(0);
-    Hit hit=query.intersect(s.origin.xyz,s.direction.xyz);
-    if(!hit.found) {
-        float weight=s.counters.w || !p.light_sampling ? 1 : power_heuristic(s.weights.y,environment_pdf(p));
-        s.radiance.xyz+=s.beta.xyz*p.environment.xyz*weight; return true;
+    path.beta.xyz *= exp(-absorption * hit.distance);
+    Surface surface = hit_surface(path.origin.xyz, path.direction.xyz, hit, spheres, planes);
+    Material m = hit_material(hit, spheres, planes);
+    if (m.kind == MaterialConductor) {
+        m.eta_roughness.xyz /= eta_i;
+        m.k_ior.xyz /= eta_i;
     }
-    s.beta.xyz*=exp(-absorption*hit.distance);
-    Surface surface=hit_surface(s.origin.xyz,s.direction.xyz,hit,spheres,planes);
-    Material m=hit_material(hit,spheres,planes);
-    if(m.flags.x==1) { m.eta_roughness.xyz/=eta_i; m.k_ior.xyz/=eta_i; }
-    float3 wo=-s.direction.xyz;
-    bool front=dot(surface.normal,wo)>0;
-    float3 n=front ? surface.normal : -surface.normal;
-    float weight=s.counters.w || !p.light_sampling ? 1 : power_heuristic(s.weights.y,endpoint_pdf(hit,surface,s.previous_point.xyz,p,spheres,planes));
-    s.radiance.xyz+=s.beta.xyz*emitted(m,surface.normal,wo)*weight;
-    if(m.flags.x==3 || (p.max_bounces && s.counters.y>=p.max_bounces)) return true;
-    uint rng=s.counters.x;
-    if(p.light_sampling && !is_delta(m)) s.radiance.xyz+=s.beta.xyz*direct_light(query,surface,wo,n,m,absorption,p,spheres,planes,lights,rng);
-    uint target_medium=m.flags.x==2 ? (front ? hit.index+1 : m.flags.z) : 0;
-    float eta_t=target_medium ? spheres[target_medium-1].material.k_ior.w : 1;
-    if(m.flags.x!=2) eta_t=m.k_ior.w;
-    BsdfSample sample=sample_bsdf(m,wo,n,eta_i,eta_t,rng);
-    if(!sample.valid) return true;
-    s.beta.xyz*=sample.value*(abs(dot(n,sample.wi))/sample.pdf);
-    if(max(max(s.beta.x,s.beta.y),s.beta.z)<=0) return true;
-    if(sample.transmission) { s.weights.x*=sample.eta*sample.eta; s.medium.x=target_medium; }
-    s.counters.y++;
-    if(s.counters.y>=4) {
-        float survival=min(max(max(s.beta.x,s.beta.y),s.beta.z)*s.weights.x,0.95f);
-        if(random_value(rng)>=survival) return true;
-        s.beta.xyz/=survival;
+    float3 wo = -path.direction.xyz;
+    bool front = dot(surface.normal, wo) > 0;
+    float3 n = front ? surface.normal : -surface.normal;
+    float weight =
+        path.previous_delta || !p.light_sampling
+            ? 1
+            : power_heuristic(path.previous_pdf, endpoint_pdf(hit, surface, path.previous_point.xyz,
+                                                              p, spheres, planes));
+    path.radiance.xyz += path.beta.xyz * emitted(m, surface.normal, wo) * weight;
+    if (m.kind == MaterialEmitter || (p.max_bounces && path.depth >= p.max_bounces))
+        return true;
+    uint rng = path.rng;
+    if (p.light_sampling && !is_delta(m))
+        path.radiance.xyz += path.beta.xyz * direct_light(query, surface, wo, n, m, absorption, p,
+                                                          spheres, planes, lights, rng);
+    uint target_medium =
+        m.kind == MaterialDielectric ? (front ? hit.index + 1 : m.parent_medium) : 0;
+    float eta_t = target_medium ? spheres[target_medium - 1].material.k_ior.w : 1;
+    if (m.kind != MaterialDielectric)
+        eta_t = m.k_ior.w;
+    BsdfSample sample = sample_bsdf(m, wo, n, eta_i, eta_t, rng);
+    if (!sample.valid)
+        return true;
+    path.beta.xyz *= sample.value * (abs(dot(n, sample.wi)) / sample.pdf);
+    if (max(max(path.beta.x, path.beta.y), path.beta.z) <= 0)
+        return true;
+    if (sample.transmission) {
+        path.eta_scale *= sample.eta * sample.eta;
+        path.medium_id = target_medium;
     }
-    s.previous_point=float4(surface.point,0); s.weights.y=sample.pdf; s.counters.w=sample.delta; s.counters.x=rng;
-    s.origin=float4(offset_origin(surface,sample.wi),0); s.direction=float4(normalize(sample.wi),0);
+    path.depth++;
+    if (path.depth >= 4) {
+        float survival =
+            min(max(max(path.beta.x, path.beta.y), path.beta.z) * path.eta_scale, 0.95f);
+        if (random_value(rng) >= survival)
+            return true;
+        path.beta.xyz /= survival;
+    }
+    path.previous_point = float4(surface.point, 0);
+    path.previous_pdf = sample.pdf;
+    path.previous_delta = sample.delta;
+    path.rng = rng;
+    path.origin = float4(offset_origin(surface, sample.wi), 0);
+    path.direction = float4(normalize(sample.wi), 0);
     return false;
 }
-template<typename Query>
-void trace_paths(uint pixel,Query query,constant Parameters &p,device const Sphere *spheres,device const Plane *planes,
-                 device float4 *accumulation,device PathState *paths,device atomic_uint *unfinished,device const uint4 *lights) {
-    if(pixel>=p.width*p.height) return;
-    PathState s;
+template <typename Query>
+void trace_paths(uint pixel, Query query, constant Parameters &p, device const Sphere *spheres,
+                 device const Plane *planes, device float4 *accumulation, device PathState *paths,
+                 device atomic_uint *unfinished, device const uint4 *lights) {
+    if (pixel >= p.width * p.height)
+        return;
+    PathState path;
     float3 sum;
-    if(p.reset) { initialize_path(s,pixel,0,p); sum=0; } else { s=paths[pixel]; sum=accumulation[pixel].xyz; }
-    uint target=p.sample_start+p.sample_count;
+    if (p.reset) {
+        initialize_path(path, pixel, 0, p);
+        sum = 0;
+    } else {
+        path = paths[pixel];
+        sum = accumulation[pixel].xyz;
+    }
+    uint target = p.sample_start + p.sample_count;
     // Bound GPU work without truncating a path. Its full state survives the dispatch.
-    for(uint step=0;step<min(p.sample_count*16,256u) && s.counters.z<target;++step) {
-        if(advance_path(s,query,p,spheres,planes,lights)) {
-            sum+=s.radiance.xyz;
-            initialize_path(s,pixel,s.counters.z+1,p);
+    for (uint step = 0; step < min(p.sample_count * 16, 256u) && path.completed_samples < target;
+         ++step) {
+        if (advance_path(path, query, p, spheres, planes, lights)) {
+            sum += path.radiance.xyz;
+            initialize_path(path, pixel, path.completed_samples + 1, p);
         }
     }
-    paths[pixel]=s; accumulation[pixel]=float4(sum,0);
-    if(s.counters.z<target) atomic_fetch_add_explicit(unfinished,1u,memory_order_relaxed);
+    paths[pixel] = path;
+    accumulation[pixel] = float4(sum, 0);
+    if (path.completed_samples < target)
+        atomic_fetch_add_explicit(unfinished, 1u, memory_order_relaxed);
 }
