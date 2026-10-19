@@ -15,13 +15,19 @@ impl Hitable for EmissiveSurface {
         1.0
     }
 
-    fn get_color(&self) -> &Vector3<f64> {
-        static WHITE: Vector3<f64> = Vector3::new(1.0, 1.0, 1.0);
-        &WHITE
+    fn material(&self) -> &crate::tracer::material::Material {
+        use crate::tracer::material::{Color, Kind, Material};
+        static LIGHT: Material = Material {
+            kind: Kind::Emitter,
+            emission: Color::new(1., 1., 1.),
+            ..Material::diffuse(Color::new(0., 0., 0.))
+        };
+        &LIGHT
     }
-
-    fn get_material(&self) -> &str {
-        "diffuse_light"
+    fn shape(&self) -> crate::tracer::geometry::Shape {
+        crate::tracer::geometry::Shape::Plane {
+            origin: Vector3::new(0., 0., -1.),
+        }
     }
 
     fn get_norm_at_p(&self, _: &Vector3<f64>) -> Vector3<f64> {

@@ -1,7 +1,11 @@
 mod camera;
 mod frame;
 mod geometry;
+mod light_sampling;
 mod material;
+mod material_input;
+#[cfg(test)]
+mod physics_tests;
 mod ray;
 mod render;
 mod renderer;
@@ -53,7 +57,8 @@ pub fn generate_with_options(
     options.validate()?;
     let started = Instant::now();
     let world = world::World::new(world_path, options.width, options.height)?;
-    let scene = scene::Scene::new(world.get_hitables());
+    let scene =
+        scene::Scene::with_environment(world.get_hitables(), world.description.environment.into());
     let camera = world.get_camera();
     let path = path.as_ref();
 

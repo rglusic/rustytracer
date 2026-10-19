@@ -1,3 +1,4 @@
+use crate::tracer::material::{Kind, Material as CpuMaterial};
 use crate::tracer::world::World;
 use crate::tracer::{Result, Settings};
 use bytemuck::{Pod, Zeroable};
@@ -6,21 +7,27 @@ use std::io;
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
+pub struct Material {
+    pub albedo: [f32; 4],
+    pub emission: [f32; 4],
+    pub eta_roughness: [f32; 4],
+    pub k_ior: [f32; 4],
+    pub absorption: [f32; 4],
+    pub flags: [u32; 4],
+}
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Sphere {
     pub center_radius: [f32; 4],
-    pub color: [f32; 4],
-    pub material: [u32; 4],
+    pub material: Material,
 }
-
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Plane {
     pub origin: [f32; 4],
     pub normal: [f32; 4],
-    pub color: [f32; 4],
-    pub material: [u32; 4],
+    pub material: Material,
 }
-
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Parameters {
@@ -33,20 +40,37 @@ pub struct Parameters {
     pub plane_count: u32,
     pub seed: u32,
     pub max_bounces: u32,
+    pub environment: [f32; 4],
+    pub reset: u32,
+    pub light_count: u32,
+    pub light_sampling: u32,
+    pub camera_medium: u32,
 }
-
+/// Persistent per-pixel continuation, exactly matching the Metal PathState.
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+pub struct PathState {
+    pub origin: [f32; 4],
+    pub direction: [f32; 4],
+    pub beta: [f32; 4],
+    pub radiance: [f32; 4],
+    pub previous_point: [f32; 4],
+    pub counters: [u32; 4],
+    pub medium: [u32; 4],
+    pub weights: [f32; 4],
+}
 pub struct SceneData {
     pub spheres: Vec<Sphere>,
     pub planes: Vec<Plane>,
+    pub lights: Vec<[u32; 4]>,
     pub parameters: Parameters,
 }
-
 impl SceneData {
     pub fn new(world: &World, settings: Settings) -> Result<Self> {
-        let description = &world.description;
-        let mut camera = [[0.0; 4]; 4];
-        for (packed, vector) in camera.iter_mut().zip(world.get_camera().vectors()) {
-            *packed = pack(vector, 0.0)?;
+        let d = &world.description;
+        let mut camera = [[0.; 4]; 4];
+        for (packed, v) in camera.iter_mut().zip(world.get_camera().vectors()) {
+            *packed = pack(v, 0.)?;
         }
         let center_direction = Vector3::new(
             camera[1][0] + 0.5 * camera[2][0] + 0.5 * camera[3][0] - camera[0][0],
@@ -54,88 +78,144 @@ impl SceneData {
             camera[1][2] + 0.5 * camera[2][2] + 0.5 * camera[3][2] - camera[0][2],
         );
         if !center_direction.magnitude2().is_normal() {
-            return Err(io::Error::other(
-                "Camera direction loses precision in Metal's f32 representation",
-            )
-            .into());
+            return Err(io::Error::other("Camera direction loses precision in Metal f32").into());
         }
-        let spheres = description
+        let mut spheres = d
             .spheres
             .iter()
-            .map(|sphere| {
-                let center_radius = pack(sphere.center, sphere.radius)?;
-                if center_radius[3] <= 0.0 || !(center_radius[3] * center_radius[3]).is_normal() {
-                    return Err(
-                        io::Error::other("Sphere radius is outside Metal's f32 range").into(),
-                    );
+            .map(|s| {
+                let center_radius = pack(s.center, s.radius)?;
+                let r = center_radius[3];
+                if r <= 0.
+                    || !(r * r).is_normal()
+                    || center_radius[..3]
+                        .iter()
+                        .any(|c| *c + r == *c || *c - r == *c)
+                {
+                    return Err(io::Error::other(
+                        "Sphere is outside representable Metal f32 precision",
+                    )
+                    .into());
                 }
                 Ok(Sphere {
                     center_radius,
-                    color: pack(sphere.color, 0.0)?,
-                    material: [material_id(&sphere.mat), 0, 0, 0],
+                    material: material(s.mat.resolve(s.color)?)?,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
-        let planes = description
+        let planes = d
             .planes
             .iter()
-            .map(|plane| {
-                let normal = Vector3::from(plane.normal).normalize();
+            .map(|p| {
                 Ok(Plane {
-                    origin: pack(plane.origin, 0.0)?,
-                    normal: pack(normal.into(), 0.0)?,
-                    color: pack(plane.color, 0.0)?,
-                    material: [material_id(&plane.mat), 0, 0, 0],
+                    origin: pack(p.origin, 0.)?,
+                    normal: pack(Vector3::from(p.normal).normalize().into(), 0.)?,
+                    material: material(p.mat.resolve(p.color)?)?,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
+        let mut camera_medium = 0;
+        let mut camera_radius = f64::INFINITY;
+        for i in 0..spheres.len() {
+            if spheres[i].material.flags[0] != Kind::Dielectric as u32 {
+                continue;
+            }
+            let a = &d.spheres[i];
+            let mut parent = 0;
+            let mut parent_radius = f64::INFINITY;
+            for (j, b) in d.spheres.iter().enumerate() {
+                if i != j
+                    && spheres[j].material.flags[0] == Kind::Dielectric as u32
+                    && b.radius < parent_radius
+                    && (Vector3::from(a.center) - Vector3::from(b.center)).magnitude() + a.radius
+                        < b.radius
+                {
+                    parent = u32::try_from(j)? + 1;
+                    parent_radius = b.radius;
+                }
+            }
+            spheres[i].material.flags[2] = parent;
+            if a.radius < camera_radius
+                && (Vector3::from(d.camera.lookfrom) - Vector3::from(a.center)).magnitude()
+                    < a.radius
+            {
+                camera_medium = u32::try_from(i)? + 1;
+                camera_radius = a.radius;
+            }
+        }
+        let mut lights = Vec::new();
+        for (i, s) in spheres.iter().enumerate() {
+            if s.material.emission[..3].iter().any(|x| *x > 0.) {
+                lights.push([0, i.try_into()?, 0, 0]);
+            }
+        }
+        for (i, p) in planes.iter().enumerate() {
+            if p.material.emission[..3].iter().any(|x| *x > 0.) {
+                lights.push([1, i.try_into()?, 0, 0]);
+            }
+        }
+        if d.environment.iter().any(|x| *x > 0.) {
+            lights.push([2, 0, 0, 0]);
+        }
+        let parameters = Parameters {
+            camera,
+            width: settings.image.width,
+            height: settings.image.height,
+            sample_start: 0,
+            sample_count: 0,
+            sphere_count: spheres.len().try_into()?,
+            plane_count: planes.len().try_into()?,
+            seed: settings.seed,
+            max_bounces: settings.max_bounces,
+            environment: pack(d.environment, 0.)?,
+            reset: 1,
+            light_count: lights.len().try_into()?,
+            light_sampling: settings.light_sampling.into(),
+            camera_medium,
+        };
         Ok(Self {
             spheres,
             planes,
-            parameters: Parameters {
-                camera,
-                width: settings.image.width,
-                height: settings.image.height,
-                sample_start: 0,
-                sample_count: 0,
-                sphere_count: description.spheres.len().try_into()?,
-                plane_count: description.planes.len().try_into()?,
-                seed: settings.seed,
-                max_bounces: settings.max_bounces,
-            },
+            lights,
+            parameters,
         })
     }
 }
-
-fn pack(vector: [f64; 3], fourth: f64) -> Result<[f32; 4]> {
-    let packed = [
-        vector[0] as f32,
-        vector[1] as f32,
-        vector[2] as f32,
-        fourth as f32,
-    ];
-    if packed.iter().any(|value| !value.is_finite()) {
-        return Err(io::Error::other("Scene contains a value outside Metal's f32 range").into());
+fn material(m: CpuMaterial) -> Result<Material> {
+    let result = Material {
+        albedo: pack(m.albedo.into(), 0.)?,
+        emission: pack(m.emission.into(), 0.)?,
+        eta_roughness: pack(m.eta.into(), m.roughness)?,
+        k_ior: pack(m.k.into(), m.ior)?,
+        absorption: pack(m.absorption.into(), 0.)?,
+        flags: [m.kind as u32, m.two_sided.into(), 0, 0],
+    };
+    if m.kind == Kind::Conductor
+        && result.eta_roughness[..3]
+            .iter()
+            .chain(&result.k_ior[..3])
+            .any(|v| !v.powi(4).is_normal())
+    {
+        return Err(io::Error::other("Optical constants exceed Metal f32 arithmetic range").into());
+    }
+    if m.roughness > 0. && !result.eta_roughness[3].powi(4).is_normal() {
+        return Err(io::Error::other("Roughness below Metal f32 precision").into());
+    }
+    Ok(result)
+}
+fn pack(v: [f64; 3], w: f64) -> Result<[f32; 4]> {
+    let packed = [v[0] as f32, v[1] as f32, v[2] as f32, w as f32];
+    if packed.iter().any(|v| !v.is_finite()) {
+        return Err(io::Error::other("Scene value outside Metal f32 range").into());
     }
     Ok(packed)
 }
-
-fn material_id(name: &str) -> u32 {
-    match name {
-        "metal" => 1,
-        "glass" => 2,
-        "diffuse_light" => 3,
-        _ => 0,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn rejects_values_outside_gpu_range() {
-        assert!(pack([1e100, 0.0, 0.0], 0.0).is_err());
-        assert!(pack([f64::NAN, 0.0, 0.0], 0.0).is_err());
+        assert!(pack([1e100, 0., 0.], 0.).is_err());
+        assert!(pack([f64::NAN, 0., 0.], 0.).is_err());
     }
 }

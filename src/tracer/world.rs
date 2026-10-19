@@ -1,6 +1,8 @@
 use super::Result;
 use super::camera;
 use super::geometry;
+use super::material::{Kind, Material};
+use super::material_input::MaterialInput;
 use cgmath::{InnerSpace, Vector3};
 use serde::Deserialize;
 use std::fs::File;
@@ -19,21 +21,25 @@ pub(super) struct Camera {
 pub(super) struct Plane {
     pub origin: [f64; 3],
     pub normal: [f64; 3],
+    #[serde(default = "white_color")]
     pub color: [f64; 3],
-    pub mat: String,
+    pub mat: MaterialInput,
 }
 
 #[derive(Deserialize, Debug)]
 pub(super) struct Sphere {
+    #[serde(default = "white_color")]
     pub color: [f64; 3],
     pub radius: f64,
     pub center: [f64; 3],
-    pub mat: String,
+    pub mat: MaterialInput,
 }
 
 #[derive(Deserialize, Debug)]
 pub(super) struct WorldJson {
     pub camera: Camera,
+    #[serde(default)]
+    pub environment: [f64; 3],
     pub planes: Vec<Plane>,
     pub spheres: Vec<Sphere>,
 }
@@ -89,30 +95,34 @@ impl World {
             f64::from(width) / f64::from(height),
         );
 
+        checked_color(json.environment)?;
         let mut hitables: Vec<Arc<dyn geometry::Hitable>> = Vec::new();
         for plane in &json.planes {
             let normal = checked_vector(plane.normal, "Plane normal")?;
             if !valid_direction(normal) {
                 return Err(invalid_scene("Plane normals must have nonzero finite length").into());
             }
-            hitables.push(Arc::new(geometry::Plane::new(
-                checked_vector(plane.origin, "Plane origin")?,
-                normal.normalize(),
-                checked_color(plane.color)?,
-                plane.mat.clone(),
-            )));
+            let material = plane.mat.resolve(plane.color)?;
+            if material.kind == Kind::Dielectric {
+                return Err(invalid_scene("Dielectric boundaries require closed spheres").into());
+            }
+            hitables.push(Arc::new(geometry::Plane {
+                origin: checked_vector(plane.origin, "Plane origin")?,
+                normal: normal.normalize(),
+                material,
+            }));
         }
         for sphere in &json.spheres {
             if sphere.radius <= 0.0 || !(sphere.radius * sphere.radius).is_finite() {
                 return Err(invalid_scene("Sphere radius must be positive and finite").into());
             }
-            hitables.push(Arc::new(geometry::Sphere::new(
-                checked_color(sphere.color)?,
-                sphere.radius,
-                checked_vector(sphere.center, "Sphere center")?,
-                sphere.mat.clone(),
-            )));
+            hitables.push(Arc::new(geometry::Sphere {
+                material: sphere.mat.resolve(sphere.color)?,
+                radius: sphere.radius,
+                center: checked_vector(sphere.center, "Sphere center")?,
+            }));
         }
+        validate_media(&json)?;
         Ok(World {
             camera: Arc::new(camera),
             hitables,
@@ -155,3 +165,34 @@ fn valid_direction(direction: Vector3<f64>) -> bool {
 #[cfg(test)]
 #[path = "world_tests.rs"]
 mod tests;
+
+fn white_color() -> [f64; 3] {
+    [1.; 3]
+}
+fn validate_media(json: &WorldJson) -> Result<()> {
+    let materials: Vec<Material> = json
+        .spheres
+        .iter()
+        .map(|s| s.mat.resolve(s.color))
+        .collect::<Result<_>>()?;
+    for (i, a) in json.spheres.iter().enumerate() {
+        if materials[i].kind != Kind::Dielectric {
+            continue;
+        }
+        for (j, b) in json.spheres.iter().enumerate().skip(i + 1) {
+            if materials[j].kind != Kind::Dielectric {
+                continue;
+            }
+            let distance = (Vector3::from(a.center) - Vector3::from(b.center)).magnitude();
+            if distance < a.radius + b.radius
+                && distance + a.radius.min(b.radius) >= a.radius.max(b.radius)
+            {
+                return Err(invalid_scene(
+                    "Dielectric spheres must be disjoint or strictly nested",
+                )
+                .into());
+            }
+        }
+    }
+    Ok(())
+}

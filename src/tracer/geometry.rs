@@ -1,117 +1,167 @@
-use super::ray::*;
-use super::sampler::Sampler;
-use cgmath::*;
+use super::material::{Color, Material};
+use super::ray::Ray;
+use cgmath::{InnerSpace, Vector3};
+
+#[derive(Clone, Copy, Debug)]
+pub enum Shape {
+    Plane { origin: Color },
+    Sphere { center: Color, radius: f64 },
+}
 
 pub trait Hitable: Send + Sync {
     fn hit(&self, r: &Ray, t_max: f64) -> f64;
-    fn get_color(&self) -> &Vector3<f64>;
-    fn get_material(&self) -> &str;
-    fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64>;
-}
-
-pub struct Plane {
-    origin: Vector3<f64>,
-    normal: Vector3<f64>,
-    color: Vector3<f64>,
-    mat: String,
-}
-
-impl Plane {
-    pub fn new(org: Vector3<f64>, n: Vector3<f64>, col: Vector3<f64>, m: String) -> Plane {
-        Plane {
-            origin: org,
-            normal: n,
-            color: col,
-            mat: m,
-        }
-    }
-}
-
-impl Hitable for Plane {
-    fn hit(&self, r: &Ray, t_max: f64) -> f64 {
-        let denom = r.direction().dot(self.normal);
-        if denom.abs() > 0.001 {
-            let t = (self.origin - r.origin()).dot(self.normal) / denom;
-            if t >= 0.001 && t < t_max {
-                return t;
+    fn material(&self) -> &Material;
+    fn get_norm_at_p(&self, p: &Color) -> Color;
+    fn shape(&self) -> Shape;
+    fn surface(&self, r: &Ray, t: f64) -> Surface {
+        let point = r.point_at_parameter(t);
+        let (point, scale) = match self.shape() {
+            Shape::Sphere { center, radius } => {
+                // Reproject the computed intersection onto the analytic surface.
+                (
+                    center + radius * (point - center).normalize(),
+                    abs(center) + Color::new(radius, radius, radius),
+                )
             }
+            Shape::Plane { origin, .. } => (point, abs(origin)),
+        };
+        let normal = self.get_norm_at_p(&point);
+        let error = (abs(*r.origin()) + abs(t * r.direction()) + abs(point) + scale) * gamma(16);
+        Surface {
+            point,
+            normal,
+            error,
         }
-        0.0
     }
-
-    fn get_color(&self) -> &Vector3<f64> {
-        &self.color
+}
+pub struct Plane {
+    pub origin: Color,
+    pub normal: Color,
+    pub material: Material,
+}
+impl Hitable for Plane {
+    fn hit(&self, r: &Ray, maximum: f64) -> f64 {
+        let denominator = r.direction().dot(self.normal);
+        if denominator == 0. {
+            return 0.;
+        }
+        let t = (self.origin - r.origin()).dot(self.normal) / denominator;
+        if t > 0. && t < maximum { t } else { 0. }
     }
-
-    fn get_material(&self) -> &str {
-        &self.mat
+    fn material(&self) -> &Material {
+        &self.material
     }
-
-    fn get_norm_at_p(&self, _: &Vector3<f64>) -> Vector3<f64> {
+    fn get_norm_at_p(&self, _: &Color) -> Color {
         self.normal
     }
+    fn shape(&self) -> Shape {
+        Shape::Plane {
+            origin: self.origin,
+        }
+    }
 }
-
 pub struct Sphere {
-    color: Vector3<f64>,
-    radius: f64,
-    center: Vector3<f64>,
-    mat: String,
+    pub center: Color,
+    pub radius: f64,
+    pub material: Material,
 }
-
-impl Sphere {
-    pub fn new(col: Vector3<f64>, r: f64, c: Vector3<f64>, m: String) -> Sphere {
-        Sphere {
-            color: col,
-            radius: r,
-            center: c,
-            mat: m,
-        }
-    }
-}
-
-//https://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
 impl Hitable for Sphere {
-    fn hit(&self, r: &Ray, t_max: f64) -> f64 {
-        let oc = r.origin() - self.center;
-        let a = r.direction().dot(*r.direction());
-        let b = oc.dot(*r.direction());
-        let c = oc.dot(oc) - (self.radius * self.radius);
-        let discriminant = b * b - a * c;
-        if a == 0.0 || discriminant < 0.0 {
-            return 0.0;
-        }
-        let t = (-b - discriminant.sqrt()) / a;
-        if (t < t_max) && (t > 0.001) {
-            return t;
-        }
-        let t = (-b + discriminant.sqrt()) / a;
-        if (t < t_max) && (t > 0.001) {
-            return t;
-        }
-        0.0
+    fn hit(&self, r: &Ray, maximum: f64) -> f64 {
+        sphere_distance(
+            *r.origin(),
+            *r.direction(),
+            self.center,
+            self.radius,
+            maximum,
+        )
     }
-
-    fn get_color(&self) -> &Vector3<f64> {
-        &self.color
+    fn material(&self) -> &Material {
+        &self.material
     }
-
-    fn get_material(&self) -> &str {
-        &self.mat
+    fn get_norm_at_p(&self, p: &Color) -> Color {
+        (*p - self.center).normalize()
     }
-
-    fn get_norm_at_p(&self, p: &Vector3<f64>) -> Vector3<f64> {
-        let n = p - self.center;
-        n / n.magnitude()
+    fn shape(&self) -> Shape {
+        Shape::Sphere {
+            center: self.center,
+            radius: self.radius,
+        }
     }
 }
-
-pub fn rand_usphere(rng: &mut Sampler) -> Vector3<f64> {
-    let mut p: Vector3<f64> =
-        2.0 * Vector3::new(rng.next(), rng.next(), rng.next()) - Vector3::new(1.0, 1.0, 1.0);
-
-    while p.dot(p) >= 1.0 {
-        p = 2.0 * Vector3::new(rng.next(), rng.next(), rng.next()) - Vector3::new(1.0, 1.0, 1.0);
+pub fn sphere_distance(
+    origin: Color,
+    direction: Color,
+    center: Color,
+    radius: f64,
+    maximum: f64,
+) -> f64 {
+    let oc = origin - center;
+    let a = direction.magnitude2();
+    if a == 0. {
+        return 0.;
     }
-    p
+    let b = oc.dot(direction);
+    // Closest approach avoids subtracting two large, nearly equal squared distances.
+    let perpendicular = oc - (b / a) * direction;
+    let discriminant = a * (radius * radius - perpendicular.magnitude2());
+    if discriminant < 0. {
+        return 0.;
+    }
+    let root = discriminant.sqrt();
+    let c = (oc.magnitude() - radius) * (oc.magnitude() + radius);
+    let q = -b - root.copysign(b);
+    let (mut near, mut far) = if q == 0. {
+        (-b / a, -b / a)
+    } else {
+        (q / a, c / q)
+    };
+    if near > far {
+        std::mem::swap(&mut near, &mut far);
+    }
+    if near > 0. && near < maximum {
+        near
+    } else if far > 0. && far < maximum {
+        far
+    } else {
+        0.
+    }
+}
+#[derive(Clone, Copy)]
+pub struct Surface {
+    pub point: Color,
+    pub normal: Color,
+    pub error: Color,
+}
+impl Surface {
+    pub fn offset(self, direction: Color) -> Color {
+        let distance = abs(self.normal).dot(self.error);
+        let offset = self.normal
+            * if self.normal.dot(direction) >= 0. {
+                distance
+            } else {
+                -distance
+            };
+        let p = self.point + offset;
+        Vector3::new(
+            round_away(p.x, offset.x),
+            round_away(p.y, offset.y),
+            round_away(p.z, offset.z),
+        )
+    }
+}
+fn round_away(v: f64, offset: f64) -> f64 {
+    if offset > 0. {
+        v.next_up()
+    } else if offset < 0. {
+        v.next_down()
+    } else {
+        v
+    }
+}
+pub fn abs(v: Color) -> Color {
+    Color::new(v.x.abs(), v.y.abs(), v.z.abs())
+}
+pub fn gamma(n: u32) -> f64 {
+    let e = f64::EPSILON * 0.5 * f64::from(n);
+    e / (1. - e)
 }

@@ -32,6 +32,9 @@ pub(super) struct MetalRenderer {
     spheres: MetalObject<dyn MTLBuffer>,
     planes: MetalObject<dyn MTLBuffer>,
     accumulation: MetalObject<dyn MTLBuffer>,
+    paths: MetalObject<dyn MTLBuffer>,
+    unfinished: MetalObject<dyn MTLBuffer>,
+    lights: MetalObject<dyn MTLBuffer>,
     data: SceneData,
     hardware: Option<acceleration::Hardware>,
     #[cfg(test)]
@@ -54,6 +57,10 @@ impl MetalRenderer {
             let data = SceneData::new(world, settings)?;
             let source = String::from(concat!(
                 include_str!("shaders/common.metal"),
+                "\n",
+                include_str!("shaders/bsdf.metal"),
+                "\n",
+                include_str!("shaders/integrator.metal"),
                 "\n",
                 include_str!("shaders/linear.metal"),
                 "\n",
@@ -80,12 +87,20 @@ impl MetalRenderer {
             let spheres = buffer_from_slice(&device, &data.spheres)?;
             let planes = buffer_from_slice(&device, &data.planes)?;
             let byte_count = settings.image.width as usize * settings.image.height as usize * 16;
-            if byte_count as u64 > device.recommendedMaxWorkingSetSize() / 2 {
+            if (byte_count as u64) * 9 > device.recommendedMaxWorkingSetSize() / 2 {
                 return Err(io::Error::other("Image exceeds the GPU working-memory budget").into());
             }
             let accumulation = device
                 .newBufferWithLength_options(byte_count, MTLResourceOptions::StorageModeShared)
                 .ok_or_else(|| io::Error::other("Could not allocate Metal accumulation buffer"))?;
+            let paths = device
+                .newBufferWithLength_options(
+                    (byte_count / 16) * size_of::<data::PathState>(),
+                    MTLResourceOptions::StorageModeShared,
+                )
+                .ok_or_else(|| io::Error::other("Could not allocate Metal path continuations"))?;
+            let unfinished = buffer_from_slice(&device, &[0u32])?;
+            let lights = buffer_from_slice(&device, &data.lights)?;
             let queue = device
                 .newCommandQueue()
                 .ok_or_else(|| io::Error::other("Could not create Metal command queue"))?;
@@ -123,6 +138,9 @@ impl MetalRenderer {
                 spheres,
                 planes,
                 accumulation,
+                paths,
+                unfinished,
+                lights,
                 data,
                 hardware,
                 #[cfg(test)]
@@ -168,65 +186,89 @@ impl MetalRenderer {
             .into());
         }
         let mut gpu_seconds = 0.0;
+        let mut reset = 1;
         for start in (0..settings.image.samples_per_pixel).step_by(settings.batch_size as usize) {
-            let command = self
-                .queue
-                .commandBuffer()
-                .ok_or_else(|| io::Error::other("Could not create Metal command buffer"))?;
-            let encoder = command
-                .computeCommandEncoder()
-                .ok_or_else(|| io::Error::other("Could not create Metal compute encoder"))?;
-            let mut parameters = self.data.parameters;
-            parameters.sample_start = start;
-            parameters.sample_count = settings
-                .batch_size
-                .min(settings.image.samples_per_pixel - start);
-            parameters.seed = settings.seed;
-            parameters.max_bounces = settings.max_bounces;
-            encoder.setComputePipelineState(&self.pipeline);
-            // SAFETY: POD layouts match the shader's static assertions. All indices
-            // are fixed, buffers are large enough and retained until GPU completion.
-            unsafe {
-                encoder.setBytes_length_atIndex(
-                    NonNull::from(&parameters).cast(),
-                    size_of_val(&parameters),
-                    0,
-                );
-                encoder.setBuffer_offset_atIndex(Some(&self.spheres), 0, 1);
-                encoder.setBuffer_offset_atIndex(Some(&self.planes), 0, 2);
-                encoder.setBuffer_offset_atIndex(Some(&self.accumulation), 0, 3);
-                if let Some(hardware) = &self.hardware {
-                    encoder.setAccelerationStructure_atBufferIndex(Some(&hardware.acceleration), 4);
-                    encoder.setIntersectionFunctionTable_atBufferIndex(Some(&hardware.table), 5);
-                    encoder.useResource_usage((*self.spheres).as_ref(), MTLResourceUsage::Read);
+            loop {
+                // SAFETY: shared counter has one u32, and the previous command completed.
+                unsafe {
+                    self.unfinished.contents().as_ptr().cast::<u32>().write(0);
                 }
-                encoder.dispatchThreads_threadsPerThreadgroup(
-                    MTLSize {
-                        width: count,
-                        height: 1,
-                        depth: 1,
-                    },
-                    MTLSize {
-                        width: settings.threadgroup_size,
-                        height: 1,
-                        depth: 1,
-                    },
-                );
+                let command = self
+                    .queue
+                    .commandBuffer()
+                    .ok_or_else(|| io::Error::other("Could not create Metal command buffer"))?;
+                let encoder = command
+                    .computeCommandEncoder()
+                    .ok_or_else(|| io::Error::other("Could not create Metal compute encoder"))?;
+                let mut parameters = self.data.parameters;
+                parameters.sample_start = start;
+                parameters.sample_count = settings
+                    .batch_size
+                    .min(settings.image.samples_per_pixel - start);
+                parameters.seed = settings.seed;
+                parameters.max_bounces = settings.max_bounces;
+                parameters.reset = reset;
+                parameters.light_sampling = settings.light_sampling.into();
+                encoder.setComputePipelineState(&self.pipeline);
+                // SAFETY: POD layouts match the shader's static assertions. All indices
+                // are fixed, buffers are large enough and retained until GPU completion.
+                unsafe {
+                    encoder.setBytes_length_atIndex(
+                        NonNull::from(&parameters).cast(),
+                        size_of_val(&parameters),
+                        0,
+                    );
+                    encoder.setBuffer_offset_atIndex(Some(&self.spheres), 0, 1);
+                    encoder.setBuffer_offset_atIndex(Some(&self.planes), 0, 2);
+                    encoder.setBuffer_offset_atIndex(Some(&self.accumulation), 0, 3);
+                    encoder.setBuffer_offset_atIndex(Some(&self.paths), 0, 6);
+                    encoder.setBuffer_offset_atIndex(Some(&self.unfinished), 0, 7);
+                    encoder.setBuffer_offset_atIndex(Some(&self.lights), 0, 8);
+                    if let Some(hardware) = &self.hardware {
+                        encoder.setAccelerationStructure_atBufferIndex(
+                            Some(&hardware.acceleration),
+                            4,
+                        );
+                        encoder
+                            .setIntersectionFunctionTable_atBufferIndex(Some(&hardware.table), 5);
+                        encoder.useResource_usage((*self.spheres).as_ref(), MTLResourceUsage::Read);
+                    }
+                    encoder.dispatchThreads_threadsPerThreadgroup(
+                        MTLSize {
+                            width: count,
+                            height: 1,
+                            depth: 1,
+                        },
+                        MTLSize {
+                            width: settings.threadgroup_size,
+                            height: 1,
+                            depth: 1,
+                        },
+                    );
+                }
+                encoder.endEncoding();
+                command.commit();
+                command.waitUntilCompleted();
+                if let Some(error) = command.error() {
+                    return Err(io::Error::other(format!("Metal command failed: {error}")).into());
+                }
+                if command.status() != MTLCommandBufferStatus::Completed {
+                    return Err(
+                        io::Error::other("Metal command did not complete successfully").into(),
+                    );
+                }
+                gpu_seconds += command.GPUEndTime() - command.GPUStartTime();
+                reset = 0;
+                // SAFETY: completed GPU command wrote the initialized shared counter.
+                let remaining = unsafe { self.unfinished.contents().as_ptr().cast::<u32>().read() };
+                if remaining == 0 {
+                    break;
+                }
             }
-            encoder.endEncoding();
-            command.commit();
-            command.waitUntilCompleted();
-            if let Some(error) = command.error() {
-                return Err(io::Error::other(format!("Metal command failed: {error}")).into());
-            }
-            if command.status() != MTLCommandBufferStatus::Completed {
-                return Err(io::Error::other("Metal command did not complete successfully").into());
-            }
-            gpu_seconds += command.GPUEndTime() - command.GPUStartTime();
             if settings.progress {
                 eprintln!(
                     "Samples: {}/{}",
-                    start + parameters.sample_count,
+                    (start + settings.batch_size).min(settings.image.samples_per_pixel),
                     settings.image.samples_per_pixel
                 );
             }

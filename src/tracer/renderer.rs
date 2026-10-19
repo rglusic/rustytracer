@@ -23,7 +23,8 @@ impl Renderer {
         settings.validate()?;
         let started = Instant::now();
         let world = World::new(path, settings.image.width, settings.image.height)?;
-        let scene = Scene::new(world.get_hitables());
+        let scene =
+            Scene::with_environment(world.get_hitables(), world.description.environment.into());
         let mut renderer = Self {
             world,
             scene,

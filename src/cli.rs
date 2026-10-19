@@ -21,8 +21,11 @@ pub struct Cli {
     pub samples: u32,
     #[arg(long, default_value_t = 1)]
     pub seed: u32,
-    #[arg(long, default_value_t = 64, value_parser = clap::value_parser!(u32).range(1..=256))]
+    #[arg(long, default_value_t = 0, value_parser = clap::value_parser!(u32).range(..=256))]
     pub max_bounces: u32,
+    /// Disable direct light sampling for estimator comparisons.
+    #[arg(long)]
+    pub no_light_sampling: bool,
     #[arg(long, default_value_t = 32, value_parser = clap::value_parser!(u32).range(1..=1024))]
     pub batch_size: u32,
     #[arg(long, default_value_t = 128)]
@@ -53,6 +56,7 @@ impl Cli {
             traversal: self.traversal,
             seed: self.seed,
             max_bounces: self.max_bounces,
+            light_sampling: !self.no_light_sampling,
             batch_size: self.batch_size,
             threadgroup_size: self.threadgroup_size,
             progress: self.progress,

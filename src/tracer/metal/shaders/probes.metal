@@ -43,6 +43,8 @@ kernel void probe_glass(constant Parameters &p [[buffer(0)]], device float4 *out
                         uint pixel [[thread_position_in_grid]]) {
     uint state = sample_seed(p.seed, pixel, 0);
     float scale = pixel == 0 ? 0.1f : (pixel == 1 ? 1.0f : 10.0f);
-    float3 reflected = scatter(scale * float3(0.9f, 0.4358898943540673f, 0), float3(0, 1, 0), 2, state);
+    Material m = {}; m.flags.x = 2;
+    float3 wo = -normalize(scale * float3(0.9f, 0.4358898943540673f, 0));
+    float3 reflected = sample_bsdf(m, wo, float3(0,-1,0), 1.5f, 1.0f, state).wi;
     output[pixel] = float4(reflected, 0);
 }

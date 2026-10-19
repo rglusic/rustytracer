@@ -28,6 +28,7 @@ pub struct Settings {
     pub traversal: Traversal,
     pub seed: u32,
     pub max_bounces: u32,
+    pub light_sampling: bool,
     pub batch_size: u32,
     pub threadgroup_size: usize,
     pub progress: bool,
@@ -40,7 +41,8 @@ impl Default for Settings {
             backend: Backend::Auto,
             traversal: Traversal::Auto,
             seed: 1,
-            max_bounces: 64,
+            max_bounces: 0,
+            light_sampling: true,
             batch_size: 32,
             threadgroup_size: 128,
             progress: false,
@@ -51,13 +53,13 @@ impl Default for Settings {
 impl Settings {
     pub fn validate(self) -> Result<()> {
         self.image.validate()?;
-        if !(1..=256).contains(&self.max_bounces)
+        if self.max_bounces > 256
             || !(1..=1024).contains(&self.batch_size)
             || !(1..=1024).contains(&self.threadgroup_size)
         {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Bounces must be 1..=256; batch size and threadgroup size must be 1..=1024",
+                "Bounce limit must be 0 (unlimited) or 1..=256; batch size and threadgroup size must be 1..=1024",
             )
             .into());
         }

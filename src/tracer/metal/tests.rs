@@ -17,8 +17,15 @@ fn settings(width: u32, height: u32, samples: u32, traversal: Traversal) -> Sett
 }
 
 fn room(settings: Settings) -> World {
+    // Absorbing walls make pointwise f32/f64 parity meaningful. The lossless
+    // enclosure is tested separately against analytic energy expectations.
+    let mut value: serde_json::Value =
+        serde_json::from_slice(include_bytes!("../../../worlds/closed_room.json")).unwrap();
+    for plane in value["planes"].as_array_mut().unwrap() {
+        plane["color"] = json!([0.65, 0.65, 0.65]);
+    }
     World::from_reader(
-        include_bytes!("../../../worlds/closed_room.json").as_slice(),
+        value.to_string().as_bytes(),
         settings.image.width,
         settings.image.height,
     )
@@ -63,12 +70,14 @@ fn probe(world: &World, settings: Settings, name: &str) -> Frame {
 
 #[test]
 fn host_buffer_layouts_match_metal() {
-    assert_eq!(size_of::<data::Sphere>(), 48);
-    assert_eq!(size_of::<data::Plane>(), 64);
-    assert_eq!(size_of::<data::Parameters>(), 96);
+    assert_eq!(size_of::<data::Sphere>(), 112);
+    assert_eq!(size_of::<data::Plane>(), 128);
+    assert_eq!(size_of::<data::Parameters>(), 128);
+    assert_eq!(size_of::<data::PathState>(), 128);
+    assert_eq!(size_of::<data::Material>(), 96);
     assert_eq!(std::mem::align_of::<data::Parameters>(), 16);
     assert_eq!(std::mem::offset_of!(data::Parameters, width), 64);
-    assert_eq!(std::mem::offset_of!(data::Sphere, material), 32);
+    assert_eq!(std::mem::offset_of!(data::Sphere, material), 16);
 }
 
 #[test]
@@ -153,7 +162,13 @@ fn gpu_images_match_cpu_reference_and_hardware_matches_linear() {
             .flat_map(|(a, b)| (0..3).map(move |i| f64::from((a[i] - b[i]).abs())))
             .sum::<f64>()
             / (cpu.len() * 3) as f64;
-        eprintln!("{name} vs f64 CPU mean absolute radiance error: {mae}");
+        eprintln!(
+            "{name} vs f64 CPU mean absolute radiance error: {mae}; CPU mean {} GPU mean {} CPU max {} GPU max {}",
+            cpu.iter().map(|p| p[0]).sum::<f32>() / cpu.len() as f32,
+            image.iter().map(|p| p[0]).sum::<f32>() / image.len() as f32,
+            cpu.iter().map(|p| p[0]).fold(0f32, f32::max),
+            image.iter().map(|p| p[0]).fold(0f32, f32::max)
+        );
         assert!(
             mae < 0.002,
             "{name} CPU/GPU agreement exceeded tolerance: {mae}"
@@ -221,6 +236,9 @@ fn gpu_mixed_material_scene_matches_cpu() {
     let config = settings(64, 40, 512, Traversal::Hardware);
     let mut value: serde_json::Value =
         serde_json::from_slice(include_bytes!("../../../worlds/closed_room.json")).unwrap();
+    for plane in value["planes"].as_array_mut().unwrap() {
+        plane["color"] = json!([0.65, 0.65, 0.65]);
+    }
     let spheres = value["spheres"].as_array_mut().unwrap();
     for (x, material) in [(-2.0, "metal"), (2.0, "flat")] {
         spheres.push(
@@ -272,4 +290,40 @@ fn gpu_rejects_invalid_dispatch_settings_and_resolution_changes() {
         ..config
     };
     assert!(renderer.render(different).is_err());
+}
+
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_diffuse_furnace_matches_analytic_radiance() {
+    let mut config = settings(32, 16, 1024, Traversal::Linear);
+    let value = json!({"camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":45},
+        "environment":[2,2,2], "planes":[{"origin":[0,0,-1],"normal":[0,0,1],"color":[0.2,0.5,0.9],"mat":"flat"}],
+        "spheres":[{"center":[100,0,0],"radius":1,"color":[0,0,0],"mat":"flat"}]});
+    let world = World::from_reader(value.to_string().as_bytes(), 32, 16).unwrap();
+    let cpu_scene =
+        crate::tracer::scene::Scene::with_environment(world.get_hitables(), [2., 2., 2.].into());
+    let cpu =
+        crate::tracer::render::render_linear(&cpu_scene, &world.get_camera(), config, 8).unwrap();
+    for traversal in [Traversal::Linear, Traversal::Hardware] {
+        config.traversal = traversal;
+        let frame = gpu(&world, config).render(config).unwrap();
+        let mut error = 0.;
+        for (a, b) in frame.linear.iter().zip(&cpu) {
+            for c in 0..3 {
+                error += (a[c] - b[c]).abs() as f64;
+            }
+        }
+        assert!(
+            error / ((cpu.len() * 3) as f64) < 1e-5,
+            "furnace f64/f32 error {error}"
+        );
+        for (c, expected) in [0.4, 1., 1.8].into_iter().enumerate() {
+            let mean =
+                frame.linear.iter().map(|p| p[c] as f64).sum::<f64>() / frame.linear.len() as f64;
+            assert!(
+                (mean - expected).abs() < 0.003,
+                "{traversal:?} channel {c}: {mean}"
+            );
+        }
+    }
 }

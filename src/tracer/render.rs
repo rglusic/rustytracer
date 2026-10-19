@@ -132,7 +132,7 @@ fn render_section(
             let mut rng = Sampler::new(settings.seed, index as u32, sample);
             let u = (x as f64 + rng.next()) / f64::from(options.width);
             let v = (y as f64 + rng.next()) / f64::from(options.height);
-            color += scene.render(&camera.get_ray(u, v), settings.max_bounces, &mut rng);
+            color += scene.render(&camera.get_ray(u, v), settings, &mut rng);
         }
         color /= f64::from(options.samples_per_pixel);
         *pixel = [color.x as f32, color.y as f32, color.z as f32, 0.0];
