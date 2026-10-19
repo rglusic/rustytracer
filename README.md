@@ -1,138 +1,155 @@
 # RustyTracer
 
-A Rust path tracer with a native Metal GPU backend for Apple silicon and a
-multithreaded CPU reference renderer. Scenes describe cameras, infinite planes,
-spheres, and diffuse, metal, glass, or emissive materials using JSON.
+A physically based RGB path tracer with native Metal acceleration on Apple silicon
+and an f64 multithreaded CPU reference. JSON scenes describe spheres, infinite
+planes, diffuse surfaces, mirrors, conductors, absorbing glass, and area emitters.
 
-## Quick start on Mac
+## Quick start
 
-Use Rust 1.99.1, pinned in `rust-toolchain.toml`. Rust 1.88.0 is also supported.
-The GPU backend requires Apple silicon and macOS 15 or newer; hardware ray
-traversal requires an M3 or newer GPU. Other supported systems use the CPU.
+The pinned toolchain is Rust 1.99.1; Rust 1.88 is also supported. Metal requires
+Apple silicon and macOS 15 or newer. Hardware sphere traversal requires M3 or newer.
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
 rustup run 1.99.1 cargo run --release --locked -- --list-devices
 rustup run 1.99.1 cargo run --release --locked -- \
   --backend metal --width 1920 --height 1080 --samples 256 \
-  --output output/metal.png
+  --output output/physical.png
 ```
 
-Run commands from the repository root. Explicit `rustup run` commands also work
-when Homebrew's Cargo comes first on `PATH`. Release builds are essential for
-meaningful CPU timings. Metal shaders are embedded in the executable, compiled at
-backend initialization, and reused with the pipelines and scene buffers.
+Run from the repository root. Explicit rustup commands work when Homebrew Cargo
+comes first on PATH. Release builds are important for CPU performance. The default
+scene is [`worlds/physical_room.json`](worlds/physical_room.json), with an absorbing
+glass sphere, rough conductor, and explicitly specified area-light radiance.
 
-For development and offline shader checking, install Xcode and its Metal toolchain:
+For unclipped, scene-linear floating-point output:
 
 ```sh
-xcodebuild -downloadComponent metalToolchain
-python3 scripts/check_shaders.py
+./target/release/rustytracer --backend metal --width 1920 --height 1080 \
+  --samples 1024 --output output/physical.exr
 ```
+
+PNG/JPEG apply display exposure and sRGB encoding. `--exposure -2` reduces display
+exposure by two stops; OpenEXR always stores raw radiance. Transport, MSE, and HDR
+output are independent of display clipping.
+
+## Physics
+
+The integrator uses matched BSDF values and PDFs, exact dielectric and conductor
+Fresnel, Snell refraction, Beer absorption, compensated Russian roulette, and
+area-light/BSDF multiple importance sampling (MIS). The default has no bounce cap.
+GPU paths continue across bounded dispatches with persistent state. Rays use
+scale-aware floating-point offsets instead of a fixed world-distance cutoff.
+
+[`PHYSICS.md`](PHYSICS.md) documents equations, material parameters, units, legacy
+migration, finite-precision behavior, and model limitations. Transport is linear
+RGB and unpolarized. Rough conductors use the standard single-scattering Smith GGX
+model, which omits microfacet interreflection; no empirical brightness correction
+is applied. Spectral dispersion requires wavelength-based transport.
 
 ## Render options
 
-```sh
-rustup run 1.99.1 cargo run --release --locked -- --help
-```
-
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `--backend auto/cpu/metal` | `auto` | Select the renderer; auto prefers a compatible Apple GPU |
-| `--traversal auto/linear/hardware` | `auto` | Choose GPU intersection strategy |
-| `--scene PATH` | `worlds/closed_room.json` | Input scene |
-| `--output PATH` | `output/image.png` | PNG or JPEG output; existing files are replaced |
-| `--width`, `--height` | `200`, `100` | Image dimensions |
+| `--backend auto/cpu/metal` | `auto` | Auto prefers a compatible Apple GPU |
+| `--traversal auto/linear/hardware` | `auto` | GPU sphere-intersection strategy |
+| `--scene PATH` | `worlds/physical_room.json` | JSON scene |
+| `--output PATH` | `output/image.png` | PNG, JPEG, or float OpenEXR; replaces existing file |
+| `--width`, `--height` | `200`, `100` | Resolution |
 | `--samples` | `5000` | Samples per pixel |
 | `--seed` | `1` | Reproducible random streams |
-| `--max-bounces` | `64` | Maximum path length, from 1 to 256 |
-| `--batch-size` | `32` | GPU samples per dispatch, from 1 to 1024 |
-| `--threadgroup-size` | `128` | GPU threads per group; must match pipeline limits and SIMD width |
-| `--progress` | off | Report completed GPU sample batches |
-| `--benchmark N` | `1` | Number of timed renders with reused backend resources |
-| `--warmup N` | `0` | Untimed warm-up renders before timed runs |
-| `--metrics PATH` | unset | Save workload settings and detailed timing as JSON |
-| `--list-devices` | off | Print compatible GPU capabilities |
+| `--max-bounces` | `0` | Unlimited; explicit 1..256 caps introduce truncation bias |
+| `--batch-size` | `32` | GPU sample target per batch, 1..1024 |
+| `--threadgroup-size` | `128` | Threads per group, subject to SIMD/pipeline limits |
+| `--no-light-sampling` | off | Disable MIS/direct sampling for estimator comparisons |
+| `--exposure` | `0` | Display exposure in stops, -64..64 |
+| `--progress` | off | GPU sample-batch progress |
+| `--benchmark N` | `1` | Timed renders reusing scene resources and pipelines |
+| `--warmup N` | `0` | Untimed renders before measurement |
+| `--metrics PATH` | unset | Timing/workload JSON |
+| `--reference PATH` | unset | Same-resolution scene-linear EXR for radiance MSE |
+| `--list-devices` | off | GPU capabilities |
 
-Automatic GPU traversal uses direct analytic intersection below 64 spheres and
-Metal acceleration structures from 64 spheres on supported GPUs. Infinite planes
-are intersected analytically in both modes. Hardware traversal preserves exact
-sphere geometry through custom intersection functions. Explicit hardware mode
-requires at least one sphere. `--backend cpu --traversal linear` selects the
-reference renderer; hardware traversal requires Metal.
+Auto traversal uses direct analytic sphere intersection below 64 spheres and
+acceleration structures from 64 spheres on supported GPUs. Infinite planes remain
+analytic. Custom hardware intersection functions preserve exact sphere geometry.
+Explicit hardware mode requires at least one sphere and a supported GPU.
 
-With `auto`, an unavailable compatible GPU selects the CPU. Shader compilation,
-allocation, and execution errors are reported as errors. Output directories are
-created automatically. Missing scenes and invalid settings return readable errors
-and a nonzero exit status.
+Auto selects CPU if no compatible GPU exists. Shader, allocation, and execution
+errors are reported. Scenes reject unknown materials, invalid reflectance, and
+ambiguous intersecting dielectric boundaries. Metal also validates f32 range.
 
-## Performance
+## Scenes and materials
 
-Measured on an M4 Pro MacBook Pro with a 12-core CPU, 16-core GPU, 24 GiB unified
-memory, macOS 27.0.1, and Rust 1.99.1 release builds. Each median includes PNG
-encoding and uses three sequential timed renders after one warm-up render.
+Distances are metres. Albedo is linear reflectance in [0,1]; emission is linear
+radiance and can exceed one. Absorption coefficients are inverse metres. Camera
+FOV is vertical and in degrees. Normals are normalized during loading.
 
-| Workload | Baseline | Accelerated | Speedup |
-| --- | ---: | ---: | ---: |
-| Original room, 1920 x 1080, 256 samples | CPU: 18.693 s | Metal linear: 0.874 s | 21.4x |
-| 4,096 spheres, 256 x 144, 16 samples | Metal linear: 0.4253 s | Metal hardware: 0.00359 s | 118.4x |
+```json
+{
+  "camera": {"lookfrom":[0,0,5], "lookat":[0,0,0], "fov":45},
+  "environment": [1,1,1],
+  "planes": [],
+  "spheres": [{
+    "center":[0,0,0], "radius":1,
+    "mat": {"kind":"dielectric", "ior":1.5, "absorption":[0.1,0.02,0.01]}
+  }]
+}
+```
 
-The second row measures the benefit of acceleration structures within the GPU
-backend. The first render including backend setup took 18.579 s on CPU and
-0.977 s on Metal. OS and driver shader caches may already have been warm.
-CPU calculations use f64, while Metal uses f32; both use matching sample counts,
-seeds, bounce limits, materials, and the original path termination rule.
+The original `worlds/closed_room.json` remains loadable. Legacy `metal` means its
+historical ideal mirror; measured-metal models require explicit conductor eta/k.
+Legacy emitter color now specifies its radiance, with the hardcoded intensity
+removed. See the migration table in PHYSICS.md for all historical names.
 
-Full measurements are committed in
-[`benchmarks/m4-pro-2026-10-19.json`](benchmarks/m4-pro-2026-10-19.json).
+## Measurements and validation
 
-Reproduce the primary workload with each backend:
+The [committed physics report](benchmarks/physics-m4-pro-2026-10-19.json) records analytical convergence, PBRT comparison,
+and fresh CPU/Metal timings. `--reference` MSE is computed on raw radiance before
+exposure or encoding. Backend setup, render wall time, GPU time, encoding, cold
+first-render total, median and p95 are reported separately. MSE computation is
+excluded from render and encoding timers. Timed repeats use the same seed; use
+independent seeds to measure statistical convergence.
 
 ```sh
 rustup run 1.99.1 cargo build --release --locked
-./target/release/rustytracer --backend cpu --width 1920 --height 1080 \
-  --samples 256 --seed 1 --benchmark 3 --warmup 1 \
-  --output target/cpu.png --metrics target/cpu.json
-./target/release/rustytracer --backend metal --traversal linear \
-  --width 1920 --height 1080 --samples 256 --seed 1 --benchmark 3 --warmup 1 \
-  --output target/metal.png --metrics target/metal.json
-```
-
-The metrics distinguish backend setup, render wall time, GPU command execution,
-image conversion/encoding, first-render total, median, and p95. Warm-up renders
-are excluded from the timed median. PNG encoding runs after GPU completion.
-
-Generate sphere scenes and benchmark all traversal modes sequentially:
-
-```sh
+python3 scripts/validate_physics.py
+python3 scripts/validate_physics.py --pbrt /path/to/pbrt-v3/build/pbrt
 python3 scripts/benchmark.py
 python3 scripts/tune_metal.py
 ```
 
-The benchmark script uses seed 42 and writes raw metrics, images, generated scenes,
-and a summary under `target/performance`. Dense-scene cases compare GPU linear
-and hardware traversal; the CPU comparison is performed for the original room.
-The tuning script sweeps nine batch/threadgroup combinations. On this machine,
-the sweep varied by less than 2%, so the balanced 32-sample, 128-thread defaults
-are retained. Timings depend on scene geometry, workload size, GPU contention,
-and thermal state.
+The analytical benchmark uses four sample counts and four seeds for each CPU/GPU
+mode. In the recorded run, MIS reduced radiance MSE by about 5.2x at 1024 samples.
+The matched PBRT v3 RGB reference comparison had MSE about 0.00000118. The reference
+scene and its scope are documented in PHYSICS.md; it verifies more than CPU/GPU
+agreement while remaining a focused lighting test.
 
-## Scene format
+On the M4 Pro MacBook Pro (12 CPU cores, 16 GPU cores, 24 GiB), the new physical
+room at 1920x1080 and 128 samples took a median **26.494s on CPU** and
+**1.582s on Metal linear**, including PNG encoding: **16.7x faster**.
+Forced hardware traversal took 2.533s for this three-sphere scene;
+auto correctly retains linear traversal for small scenes. These are three sequential
+timed runs after one warmup, Rust 1.99.1 release, macOS 27.0.1, seed 42, MIS enabled,
+and unlimited depth. CPU uses f64; Metal uses f32.
 
-The existing JSON format is preserved; `worlds/closed_room.json` is a complete
-example. Positions, normals, and colors contain exactly three finite numbers.
-Colors are nonnegative, sphere radii are positive, and plane normals are nonzero
-and normalized by the loader. Camera field of view is vertical, in degrees,
-strictly between 0 and 180. Its view direction must be nonzero and not parallel
-to its Y up vector.
+Reproduce these timings with each backend:
 
-Materials are `flat`, `metal`, `glass` (index 1.5), and `diffuse_light`. Unknown
-material names retain the original flat fallback. The Metal adapter checks f32
-range and rejects camera directions that collapse at GPU precision. Very large
-coordinates and delicate intersections can differ from the f64 CPU renderer.
-Changing a renderer's resolution requires constructing a new renderer.
+```sh
+./target/release/rustytracer --backend cpu --width 1920 --height 1080 \
+  --samples 128 --seed 42 --benchmark 3 --warmup 1 \
+  --output target/cpu.png --metrics target/cpu.json
+./target/release/rustytracer --backend metal --traversal linear --width 1920 --height 1080 \
+  --samples 128 --seed 42 --benchmark 3 --warmup 1 \
+  --output target/metal.png --metrics target/metal.json
+```
 
-## Development and verification
+The earlier [`benchmarks/m4-pro-2026-10-19.json`](benchmarks/m4-pro-2026-10-19.json)
+contains historical pre-physics timing data. Its 21.4x and 118.4x speedups describe
+the older estimator and scene, and are not current physical-renderer results.
+Fresh physical benchmarks use `target/performance-physics` and the new scene.
+
+## Development
 
 ```sh
 rustup run 1.99.1 cargo fmt --all -- --check
@@ -140,59 +157,39 @@ rustup run 1.99.1 cargo clippy --locked --all-targets --all-features -- -D warni
 rustup run 1.99.1 cargo clippy --locked --all-targets --no-default-features -- -D warnings
 rustup run 1.99.1 cargo test --locked --all-features
 rustup run 1.99.1 cargo test --locked --no-default-features
+xcodebuild -downloadComponent metalToolchain
 python3 scripts/check_shaders.py
-```
-
-Eight dedicated GPU tests require a real Apple GPU, with M3 or newer for hardware
-traversal. Run them explicitly on the Mac:
-
-```sh
 MTL_DEBUG_LAYER=1 MTL_SHADER_VALIDATION=1 \
   rustup run 1.99.1 cargo test --locked --all-features -- \
   --ignored --test-threads=1 --nocapture
 ```
 
-These tests exercise actual GPU RNG streams, CPU/GPU image agreement, all material
-types, inside/tangent/missing/nonunit rays, total internal reflection, empty and
-tiny scenes, deterministic batch accumulation, buffer reuse, and invalid dispatch
-settings. The room test measured mean absolute linear-radiance error of about
-0.000006 against the f64 CPU reference. Floating-point tolerances are tested
-before clipping or image encoding.
+The dedicated GPU tests require actual Apple hardware, with M3 or newer for
+hardware traversal. They cover RNG equivalence, BSDFs, CPU/GPU radiance agreement,
+analytic furnace and cavity energy, nested glass and absorption, rough conductors,
+batch determinism, path continuation, geometry edge cases, and invalid dispatches.
+Ordinary CI runs CPU tests on Linux/macOS/Windows, including Rust 1.88 on Linux;
+macOS also compiles Metal shaders. GPU runtime tests run explicitly on hardware.
 
-CI builds and tests CPU configurations on Linux, macOS, and Windows, including
-Rust 1.88 on Linux. macOS CI compiles the Metal backend and shader source. Dedicated
-GPU runtime tests run explicitly on hardware; ordinary CI does not claim GPU
-execution coverage.
-
-To build without Apple GPU dependencies:
-
-```sh
-rustup run 1.99.1 cargo build --release --locked --no-default-features
-```
+To omit Apple GPU dependencies, build with `--no-default-features`.
 
 ## Architecture
 
-- `world.rs` validates JSON and retains scene descriptions for both backends.
-- `renderer.rs` selects and owns the reusable backend and scene resources.
-- `render.rs`, `scene.rs`, and `material.rs` implement the f64 CPU reference.
-- `sampler.rs` and its Metal counterpart use matching PCG integer operations.
-- `metal/data.rs` defines checked, aligned POD transfer records.
-- `metal/mod.rs` owns the Metal device, pipelines, shared buffers, dispatches, and completion checks.
-- `metal/acceleration.rs` builds sphere acceleration structures and intersection function tables.
-- `metal/shaders/` contains compute, intersection, material, and test kernels.
-- `frame.rs` validates radiance and converts it to RGB after rendering.
+- `world.rs`, `material_input.rs`: validated scene and physical material contract.
+- `material.rs`, `scene.rs`, `light_sampling.rs`: f64 BSDFs, transport, and MIS.
+- `geometry.rs`: intersections, projected hit points, and secondary-ray spawning.
+- `render.rs`, `sampler.rs`: deterministic per-pixel/sample CPU work and RNG.
+- `metal/data.rs`: checked POD layouts and medium/light metadata.
+- `metal/mod.rs`, `metal/acceleration.rs`: Metal resources, continuations, and traversal.
+- `metal/shaders/`: shared physical BSDF/integrator with two query implementations.
+- `frame.rs`: radiance validation, float EXR, exposure, and sRGB display encoding.
 
-The GPU owns disjoint pixels, accumulates in resident float4 buffers, and runs
-iterative bounded paths. Scene buffers are uploaded once per renderer. CPU access
-to GPU output follows command completion. Unsafe interop is confined to the Metal
-module; Rust POD layout tests and Metal static assertions verify transfer sizes.
-Historical `light.rs`, `photonmap.rs`, and `spectral.rs` experiments remain outside
-the active module tree.
+GPU scene resources remain resident. The persistent path state uses 128 bytes per
+pixel, plus a 16-byte radiance accumulation buffer. CPU reads follow command
+completion. Unsafe interop is isolated in the Metal module, with host layout tests
+and shader static assertions. Historical `light.rs`, `photonmap.rs`, and
+`spectral.rs` experiments remain outside the active module tree.
 
 ## License
 
-MIT; see `LICENSE.txt`. Third-party notices are retained in `Licenses/`.
-
-## Earlier example
-
-![Glass bubble with lighting effect from an earlier version](image.png)
+MIT; see `LICENSE.txt`. Third-party notices remain in `Licenses/`.

@@ -58,11 +58,12 @@ impl Scene {
             if m.kind != Kind::Dielectric || excluded == Some(i) {
                 continue;
             }
-            if let Shape::Sphere { center, radius: r } = object.shape() {
-                if r < radius && (point - center).magnitude2() < r * r {
-                    radius = r;
-                    medium = (m.ior, m.absorption);
-                }
+            if let Shape::Sphere { center, radius: r } = object.shape()
+                && r < radius
+                && (point - center).magnitude2() < r * r
+            {
+                radius = r;
+                medium = (m.ior, m.absorption);
             }
         }
         medium
