@@ -1,6 +1,6 @@
 # Renderer optimization and cleanup plan
 
-Status: all three milestones approved by the user; implementation in progress.
+Status: all three approved milestones completed and validated.
 Branch: `renderer-optimization-cleanup`, based on physics
 commit `43426ba68a2f0e2bbb7751dcab37f97b3ca043d3`.
 
@@ -150,7 +150,15 @@ Rust 1.99.1 and Rust 1.88 tests pass with and without Metal. Strict Clippy and
 format checks pass, as do all 14 GPU tests with Metal API/shader validation. The
 final CPU and both GPU images have exactly zero MSE against the original EXRs.
 The analytical/PBRT validation reproduces its previous results, including PBRT
-reference MSE 0.0000011811. Final sequential timings and CI results are pending.
+reference MSE 0.0000011811. The implementation commit `368c53a` passed the full
+[CI matrix](https://github.com/rglusic/rustytracer/actions/runs/39327627936).
+
+The [final report](benchmarks/optimization-m4-pro-2026-10-19.json) records fresh
+sequential before/after measurements: full-HD CPU time, including PNG, fell from
+26.160s to 19.208s (26.6%); Metal linear fell from 1.573s to 1.529s (2.8%). Dense
+hardware cases improved by about 8–14%. The shortest 16-sphere linear case was
+0.35ms slower, so a larger alternating followup was run; that workload improved
+from 0.3443s to 0.3319s. All raw case timings and measurement conditions are retained.
 
 ## References checked during investigation
 

@@ -104,8 +104,10 @@ removed. See the migration table in PHYSICS.md for all historical names.
 
 ## Measurements and validation
 
-The [committed physics report](benchmarks/physics-m4-pro-2026-10-19.json) records analytical convergence, PBRT comparison,
-and fresh CPU/Metal timings. `--reference` MSE is computed on raw radiance before
+The [physics report](benchmarks/physics-m4-pro-2026-10-19.json) records analytical convergence and PBRT comparison.
+The [optimization report](benchmarks/optimization-m4-pro-2026-10-19.json) records
+fresh paired CPU/Metal measurements, radiance regression checks, and CI evidence.
+`--reference` MSE is computed on raw radiance before
 exposure or encoding. Backend setup, render wall time, GPU time, encoding, cold
 first-render total, median and p95 are reported separately. MSE computation is
 excluded from render and encoding timers. Timed repeats use the same seed; use
@@ -125,13 +127,26 @@ The matched PBRT v3 RGB reference comparison had MSE about 0.00000118. The refer
 scene and its scope are documented in PHYSICS.md; it verifies more than CPU/GPU
 agreement while remaining a focused lighting test.
 
-On the M4 Pro MacBook Pro (12 CPU cores, 16 GPU cores, 24 GiB), the new physical
-room at 1920x1080 and 128 samples took a median **26.494s on CPU** and
-**1.582s on Metal linear**, including PNG encoding: **16.7x faster**.
-Forced hardware traversal took 2.533s for this three-sphere scene;
-auto correctly retains linear traversal for small scenes. These are three sequential
-timed runs after one warmup, Rust 1.99.1 release, macOS 27.0.1, seed 42, MIS enabled,
-and unlimited depth. CPU uses f64; Metal uses f32.
+On the M4 Pro MacBook Pro (12 CPU cores, 16 GPU cores, 24 GiB), the physical room at
+1920x1080 and 128 samples improved as follows, including PNG encoding:
+
+| Backend | Before | After | Elapsed time reduction |
+| --- | ---: | ---: | ---: |
+| CPU | 26.160s | 19.208s | 26.6% |
+| Metal linear | 1.573s | 1.529s | 2.8% |
+
+Dense hardware-traversal cases improved by about 8–14%; the 4096-sphere case at
+256x144 and 16 samples went from 0.02791s to 0.02477s. Gains vary with the workload.
+The shortest 16-sphere linear case measured 0.35ms slower; a larger alternating
+followup of that scene improved from 0.3443s to 0.3319s. Full run data is retained
+in the report.
+
+Measurements use Rust 1.99.1 release, macOS 27.0.1, seed 42, MIS, and unlimited
+depth. Runs are sequential, with three timed renders after one warmup per process.
+The GPU room comparison uses alternating process order and pools six timed runs
+per version. Driver shader caches were already warm. CPU uses f64; Metal uses f32.
+Both GPU traversal modes and the CPU have exactly zero radiance MSE against the
+pre-optimization 320x180, 256-sample EXRs; the full-HD CPU PNG is also identical.
 
 Reproduce these timings with each backend:
 
