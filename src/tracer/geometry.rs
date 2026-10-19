@@ -1,6 +1,6 @@
 use super::ray::*;
+use super::sampler::Sampler;
 use cgmath::*;
-use rand::RngExt;
 
 pub trait Hitable: Send + Sync {
     fn hit(&self, r: &Ray, t_max: f64) -> f64;
@@ -106,14 +106,12 @@ impl Hitable for Sphere {
     }
 }
 
-pub fn rand_usphere() -> Vector3<f64> {
-    let mut rng = rand::rng();
+pub fn rand_usphere(rng: &mut Sampler) -> Vector3<f64> {
     let mut p: Vector3<f64> =
-        2.0 * Vector3::new(rng.random(), rng.random(), rng.random()) - Vector3::new(1.0, 1.0, 1.0);
+        2.0 * Vector3::new(rng.next(), rng.next(), rng.next()) - Vector3::new(1.0, 1.0, 1.0);
 
     while p.dot(p) >= 1.0 {
-        p = 2.0 * Vector3::new(rng.random(), rng.random(), rng.random())
-            - Vector3::new(1.0, 1.0, 1.0);
+        p = 2.0 * Vector3::new(rng.next(), rng.next(), rng.next()) - Vector3::new(1.0, 1.0, 1.0);
     }
     p
 }

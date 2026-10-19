@@ -1,13 +1,19 @@
 use super::geometry;
 use super::ray;
+use super::sampler::Sampler;
 use cgmath::*;
-use rand::RngExt;
 
 use std::collections::HashMap as Map;
 use std::sync::Arc;
 
 pub trait Material: Send + Sync {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray>;
+    fn scatter(
+        &self,
+        r: &ray::Ray,
+        n: &Vector3<f64>,
+        p: &Vector3<f64>,
+        rng: &mut Sampler,
+    ) -> Option<ray::Ray>;
     fn emitted(&self) -> Vector3<f64> {
         Vector3::new(0.0, 0.0, 0.0)
     }
@@ -16,8 +22,14 @@ pub trait Material: Send + Sync {
 pub struct Flat {}
 
 impl Material for Flat {
-    fn scatter(&self, _: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
-        let direction = n + geometry::rand_usphere();
+    fn scatter(
+        &self,
+        _: &ray::Ray,
+        n: &Vector3<f64>,
+        p: &Vector3<f64>,
+        rng: &mut Sampler,
+    ) -> Option<ray::Ray> {
+        let direction = n + geometry::rand_usphere(rng);
         let direction = direction / direction.dot(direction).sqrt();
         Some(ray::Ray::new_from(*p, direction))
     }
@@ -26,7 +38,13 @@ impl Material for Flat {
 pub struct Metal {}
 
 impl Material for Metal {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
+    fn scatter(
+        &self,
+        r: &ray::Ray,
+        n: &Vector3<f64>,
+        p: &Vector3<f64>,
+        _: &mut Sampler,
+    ) -> Option<ray::Ray> {
         let reflected = reflect(&(r.direction() / r.direction().magnitude()), n);
         Some(ray::Ray::new_from(*p, reflected))
     }
@@ -43,7 +61,13 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> Option<ray::Ray> {
+    fn scatter(
+        &self,
+        r: &ray::Ray,
+        n: &Vector3<f64>,
+        p: &Vector3<f64>,
+        rng: &mut Sampler,
+    ) -> Option<ray::Ray> {
         let incoming = r.direction().normalize();
         let (normal, ratio) = if incoming.dot(*n) < 0.0 {
             (*n, 1.0 / self.ref_index)
@@ -52,9 +76,7 @@ impl Material for Dielectric {
         };
         let cosine = (-incoming.dot(normal)).clamp(0.0, 1.0);
         let direction = match refract(&incoming, &normal, ratio) {
-            Some(refracted) if rand::rng().random::<f64>() >= schlick(cosine, self.ref_index) => {
-                refracted
-            }
+            Some(refracted) if rng.next() >= schlick(cosine, self.ref_index) => refracted,
             // Total internal reflection cannot produce a transmitted ray.
             _ => reflect(&incoming, &normal),
         };
@@ -94,7 +116,13 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn scatter(&self, _: &ray::Ray, _: &Vector3<f64>, _: &Vector3<f64>) -> Option<ray::Ray> {
+    fn scatter(
+        &self,
+        _: &ray::Ray,
+        _: &Vector3<f64>,
+        _: &Vector3<f64>,
+        _: &mut Sampler,
+    ) -> Option<ray::Ray> {
         None
     }
     fn emitted(&self) -> Vector3<f64> {

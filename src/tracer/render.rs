@@ -1,13 +1,16 @@
 use super::Result;
 use super::camera::Camera;
+use super::sampler::Sampler;
 use super::scene::Scene;
+use super::settings::Settings;
 use cgmath::Vector3;
+#[cfg(test)]
 use image::RgbImage;
-use rand::RngExt;
+use serde::Serialize;
 use std::io;
 use std::thread;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct RenderOptions {
     pub width: u32,
     pub height: u32,
@@ -37,17 +40,34 @@ impl RenderOptions {
     }
 }
 
+#[cfg(test)]
 pub(super) fn render(scene: &Scene, camera: &Camera, options: RenderOptions) -> Result<RgbImage> {
     let workers = thread::available_parallelism().map_or(1, |count| count.get());
     render_with_workers(scene, camera, options, workers)
 }
 
+#[cfg(test)]
 fn render_with_workers(
     scene: &Scene,
     camera: &Camera,
     options: RenderOptions,
     workers: usize,
 ) -> Result<RgbImage> {
+    let settings = Settings {
+        image: options,
+        ..Settings::default()
+    };
+    let linear = render_linear(scene, camera, settings, workers)?;
+    super::frame::to_rgb(&linear, options)
+}
+
+pub(super) fn render_linear(
+    scene: &Scene,
+    camera: &Camera,
+    settings: Settings,
+    workers: usize,
+) -> Result<Vec<[f32; 4]>> {
+    let options = settings.image;
     options.validate()?;
     if workers == 0 {
         return Err(
@@ -57,7 +77,7 @@ fn render_with_workers(
 
     let byte_count = u64::from(options.width)
         .checked_mul(u64::from(options.height))
-        .and_then(|pixels| pixels.checked_mul(3))
+        .and_then(|pixels| pixels.checked_mul(16))
         .and_then(|bytes| usize::try_from(bytes).ok())
         .ok_or_else(|| {
             io::Error::new(
@@ -66,16 +86,16 @@ fn render_with_workers(
             )
         })?;
     let mut pixels = Vec::new();
-    pixels.try_reserve_exact(byte_count)?;
-    pixels.resize(byte_count, 0);
+    pixels.try_reserve_exact(byte_count / 16)?;
+    pixels.resize(byte_count / 16, [0.0; 4]);
 
-    let pixels_per_worker = (byte_count / 3).div_ceil(workers);
+    let pixels_per_worker = pixels.len().div_ceil(workers);
     thread::scope(|scope| -> Result<()> {
         let mut handles = Vec::new();
         // Every worker owns a disjoint slice, including any remainder pixels.
-        for (section, buffer) in pixels.chunks_mut(pixels_per_worker * 3).enumerate() {
+        for (section, buffer) in pixels.chunks_mut(pixels_per_worker).enumerate() {
             handles.push(scope.spawn(move || {
-                render_section(buffer, section * pixels_per_worker, scene, camera, options);
+                render_section(buffer, section * pixels_per_worker, scene, camera, settings);
             }));
         }
 
@@ -91,35 +111,31 @@ fn render_with_workers(
         Ok(())
     })?;
 
-    RgbImage::from_raw(options.width, options.height, pixels)
-        .ok_or_else(|| io::Error::other("Invalid rendered image buffer").into())
+    Ok(pixels)
 }
 
 fn render_section(
-    pixels: &mut [u8],
+    pixels: &mut [[f32; 4]],
     first_pixel: usize,
     scene: &Scene,
     camera: &Camera,
-    options: RenderOptions,
+    settings: Settings,
 ) {
-    let mut rng = rand::rng();
+    let options = settings.image;
     let width = options.width as usize;
-    for (offset, pixel) in pixels.chunks_exact_mut(3).enumerate() {
+    for (offset, pixel) in pixels.iter_mut().enumerate() {
         let index = first_pixel + offset;
         let x = index % width;
         let y = index / width;
         let mut color = Vector3::new(0.0, 0.0, 0.0);
-        for _ in 0..options.samples_per_pixel {
-            let u = (x as f64 + rng.random::<f64>()) / f64::from(options.width);
-            let v = (y as f64 + rng.random::<f64>()) / f64::from(options.height);
-            color += scene.render(&camera.get_ray(u, v), 0, f64::MAX);
+        for sample in 0..options.samples_per_pixel {
+            let mut rng = Sampler::new(settings.seed, index as u32, sample);
+            let u = (x as f64 + rng.next()) / f64::from(options.width);
+            let v = (y as f64 + rng.next()) / f64::from(options.height);
+            color += scene.render(&camera.get_ray(u, v), settings.max_bounces, &mut rng);
         }
         color /= f64::from(options.samples_per_pixel);
-        pixel.copy_from_slice(&[
-            (255.99 * color.x.clamp(0.0, 1.0)) as u8,
-            (255.99 * color.y.clamp(0.0, 1.0)) as u8,
-            (255.99 * color.z.clamp(0.0, 1.0)) as u8,
-        ]);
+        *pixel = [color.x as f32, color.y as f32, color.z as f32, 0.0];
     }
 }
 

@@ -9,38 +9,39 @@ use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Deserialize, Debug)]
-struct Camera {
-    lookfrom: [f64; 3],
-    lookat: [f64; 3],
-    fov: f64,
+pub(super) struct Camera {
+    pub lookfrom: [f64; 3],
+    pub lookat: [f64; 3],
+    pub fov: f64,
 }
 
 #[derive(Deserialize, Debug)]
-struct Plane {
-    origin: [f64; 3],
-    normal: [f64; 3],
-    color: [f64; 3],
-    mat: String,
+pub(super) struct Plane {
+    pub origin: [f64; 3],
+    pub normal: [f64; 3],
+    pub color: [f64; 3],
+    pub mat: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct Sphere {
-    color: [f64; 3],
-    radius: f64,
-    center: [f64; 3],
-    mat: String,
+pub(super) struct Sphere {
+    pub color: [f64; 3],
+    pub radius: f64,
+    pub center: [f64; 3],
+    pub mat: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct WorldJson {
-    camera: Camera,
-    planes: Vec<Plane>,
-    spheres: Vec<Sphere>,
+pub(super) struct WorldJson {
+    pub camera: Camera,
+    pub planes: Vec<Plane>,
+    pub spheres: Vec<Sphere>,
 }
 
 pub struct World {
     camera: Arc<camera::Camera>,
     hitables: Vec<Arc<dyn geometry::Hitable>>,
+    pub(super) description: WorldJson,
 }
 
 impl World {
@@ -89,7 +90,7 @@ impl World {
         );
 
         let mut hitables: Vec<Arc<dyn geometry::Hitable>> = Vec::new();
-        for plane in json.planes {
+        for plane in &json.planes {
             let normal = checked_vector(plane.normal, "Plane normal")?;
             if !valid_direction(normal) {
                 return Err(invalid_scene("Plane normals must have nonzero finite length").into());
@@ -98,10 +99,10 @@ impl World {
                 checked_vector(plane.origin, "Plane origin")?,
                 normal.normalize(),
                 checked_color(plane.color)?,
-                plane.mat,
+                plane.mat.clone(),
             )));
         }
-        for sphere in json.spheres {
+        for sphere in &json.spheres {
             if sphere.radius <= 0.0 || !(sphere.radius * sphere.radius).is_finite() {
                 return Err(invalid_scene("Sphere radius must be positive and finite").into());
             }
@@ -109,12 +110,13 @@ impl World {
                 checked_color(sphere.color)?,
                 sphere.radius,
                 checked_vector(sphere.center, "Sphere center")?,
-                sphere.mat,
+                sphere.mat.clone(),
             )));
         }
         Ok(World {
             camera: Arc::new(camera),
             hitables,
+            description: json,
         })
     }
 

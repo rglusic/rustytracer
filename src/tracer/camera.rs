@@ -42,4 +42,14 @@ impl Camera {
             self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
         )
     }
+
+    #[cfg(all(target_os = "macos", feature = "metal"))]
+    pub(super) fn vectors(&self) -> [[f64; 3]; 4] {
+        [
+            self.origin.into(),
+            self.lower_left_corner.into(),
+            self.horizontal.into(),
+            self.vertical.into(),
+        ]
+    }
 }
