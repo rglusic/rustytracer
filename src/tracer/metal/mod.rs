@@ -1,3 +1,4 @@
+mod acceleration;
 mod data;
 
 use super::frame::Frame;
@@ -29,6 +30,9 @@ pub(super) struct MetalRenderer {
     planes: MetalObject<dyn MTLBuffer>,
     accumulation: MetalObject<dyn MTLBuffer>,
     data: SceneData,
+    hardware: Option<acceleration::Hardware>,
+    #[cfg(test)]
+    library: MetalObject<dyn MTLLibrary>,
 }
 
 impl MetalRenderer {
@@ -38,12 +42,6 @@ impl MetalRenderer {
         settings: Settings,
     ) -> Result<Self> {
         autoreleasepool(|_| {
-            if settings.traversal == super::Traversal::Hardware {
-                return Err(io::Error::other(
-                    "Hardware traversal is not enabled in this compute milestone",
-                )
-                .into());
-            }
             if !device.hasUnifiedMemory() {
                 return Err(io::Error::other(
                     "This Metal backend requires an Apple unified-memory GPU",
@@ -51,15 +49,20 @@ impl MetalRenderer {
                 .into());
             }
             let data = SceneData::new(world, settings)?;
-            let source = concat!(
+            let source = String::from(concat!(
                 include_str!("shaders/common.metal"),
                 "\n",
-                include_str!("shaders/linear.metal")
-            );
+                include_str!("shaders/linear.metal"),
+                "\n",
+                include_str!("shaders/hardware.metal")
+            ));
+            #[cfg(test)]
+            let source = format!("{source}\n{}", include_str!("shaders/probes.metal"));
             let options = MTLCompileOptions::new();
             options.setLanguageVersion(MTLLanguageVersion::Version3_1);
+            options.setMathMode(MTLMathMode::Safe);
             let library = device
-                .newLibraryWithSource_options_error(&NSString::from_str(source), Some(&options))
+                .newLibraryWithSource_options_error(&NSString::from_str(&source), Some(&options))
                 .map_err(|error| {
                     io::Error::other(format!("Metal shader compilation failed: {error}"))
                 })?;
@@ -83,6 +86,33 @@ impl MetalRenderer {
             let queue = device
                 .newCommandQueue()
                 .ok_or_else(|| io::Error::other("Could not create Metal command queue"))?;
+            let supports_hardware =
+                device.supportsRaytracing() && device.supportsFamily(MTLGPUFamily::Apple9);
+            let use_hardware = match settings.traversal {
+                super::Traversal::Hardware => {
+                    if !supports_hardware || data.spheres.is_empty() {
+                        return Err(io::Error::other("Hardware traversal requires an M3 or newer GPU and at least one sphere").into());
+                    }
+                    true
+                }
+                super::Traversal::Auto => supports_hardware && data.spheres.len() >= 64,
+                super::Traversal::Linear => false,
+            };
+            let hardware = if use_hardware {
+                Some(acceleration::Hardware::new(
+                    &device,
+                    &queue,
+                    &library,
+                    &data.spheres,
+                    &spheres,
+                    "trace_hardware",
+                )?)
+            } else {
+                None
+            };
+            let pipeline = hardware
+                .as_ref()
+                .map_or(pipeline, |hardware| hardware.pipeline.clone());
             Ok(Self {
                 device,
                 queue,
@@ -91,6 +121,9 @@ impl MetalRenderer {
                 planes,
                 accumulation,
                 data,
+                hardware,
+                #[cfg(test)]
+                library,
             })
         })
     }
@@ -99,7 +132,11 @@ impl MetalRenderer {
         self.device.name().to_string()
     }
     pub fn traversal_name(&self) -> &'static str {
-        "linear"
+        if self.hardware.is_some() {
+            "hardware"
+        } else {
+            "linear"
+        }
     }
 
     pub fn render(&mut self, settings: Settings) -> Result<Frame> {
@@ -109,7 +146,9 @@ impl MetalRenderer {
     fn render_inner(&mut self, settings: Settings) -> Result<Frame> {
         let started = Instant::now();
         let count = settings.image.width as usize * settings.image.height as usize;
-        if self.accumulation.length() != count * 16 {
+        if self.data.parameters.width != settings.image.width
+            || self.data.parameters.height != settings.image.height
+        {
             return Err(
                 io::Error::other("Renderer resolution cannot change after initialization").into(),
             );
@@ -152,6 +191,11 @@ impl MetalRenderer {
                 encoder.setBuffer_offset_atIndex(Some(&self.spheres), 0, 1);
                 encoder.setBuffer_offset_atIndex(Some(&self.planes), 0, 2);
                 encoder.setBuffer_offset_atIndex(Some(&self.accumulation), 0, 3);
+                if let Some(hardware) = &self.hardware {
+                    encoder.setAccelerationStructure_atBufferIndex(Some(&hardware.acceleration), 4);
+                    encoder.setIntersectionFunctionTable_atBufferIndex(Some(&hardware.table), 5);
+                    encoder.useResource_usage((*self.spheres).as_ref(), MTLResourceUsage::Read);
+                }
                 encoder.dispatchThreads_threadsPerThreadgroup(
                     MTLSize {
                         width: count,
@@ -207,6 +251,9 @@ impl MetalRenderer {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;
 
 fn buffer_from_slice<T: bytemuck::Pod>(
     device: &ProtocolObject<dyn MTLDevice>,

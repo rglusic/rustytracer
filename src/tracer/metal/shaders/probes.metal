@@ -1,0 +1,48 @@
+kernel void probe_rng(constant Parameters &p [[buffer(0)]],
+                      device float4 *output [[buffer(3)]], uint pixel [[thread_position_in_grid]]) {
+    uint state = sample_seed(p.seed, pixel, 7);
+    float a = random_value(state), b = random_value(state), c = random_value(state);
+    output[pixel] = float4(a, b, c, 0);
+}
+
+void probe_ray(uint pixel, thread float3 &origin, thread float3 &direction) {
+    origin = float3(0);
+    direction = float3(0, 0, -1);
+    switch (pixel) {
+        case 1: direction = float3(1, 0, 0); break;
+        case 2: origin = float3(0, 0, -3); break;
+        case 3: origin = float3(1, 0, 0); break;
+        case 4: direction *= 2; break;
+        case 5: direction = float3(0, 0, 1); break;
+        case 6: origin = float3(0, -2, 0); break;
+        case 7: origin = float3(0, 0, -3.998f); break;
+    }
+}
+
+kernel void probe_linear(constant Parameters &p [[buffer(0)]], device const Sphere *spheres [[buffer(1)]],
+                         device const Plane *planes [[buffer(2)]], device float4 *output [[buffer(3)]],
+                         uint pixel [[thread_position_in_grid]]) {
+    float3 origin, direction;
+    probe_ray(pixel, origin, direction);
+    Hit hit = intersect_linear(origin, direction, p, spheres, planes);
+    output[pixel] = float4(hit.found ? hit.distance : -1.0f, hit.found ? hit.normal.x : 0.0f, hit.found ? hit.normal.y : 0.0f, 0);
+}
+
+kernel void probe_hardware(constant Parameters &p [[buffer(0)]], device const Sphere *spheres [[buffer(1)]],
+                           device const Plane *planes [[buffer(2)]], device float4 *output [[buffer(3)]],
+                           primitive_acceleration_structure acceleration [[buffer(4)]],
+                           intersection_function_table<> functions [[buffer(5)]],
+                           uint pixel [[thread_position_in_grid]]) {
+    float3 origin, direction;
+    probe_ray(pixel, origin, direction);
+    Hit hit = intersect_hardware(origin, direction, p, spheres, planes, acceleration, functions);
+    output[pixel] = float4(hit.found ? hit.distance : -1.0f, hit.found ? hit.normal.x : 0.0f, hit.found ? hit.normal.y : 0.0f, 0);
+}
+
+kernel void probe_glass(constant Parameters &p [[buffer(0)]], device float4 *output [[buffer(3)]],
+                        uint pixel [[thread_position_in_grid]]) {
+    uint state = sample_seed(p.seed, pixel, 0);
+    float scale = pixel == 0 ? 0.1f : (pixel == 1 ? 1.0f : 10.0f);
+    float3 reflected = scatter(scale * float3(0.9f, 0.4358898943540673f, 0), float3(0, 1, 0), 2, state);
+    output[pixel] = float4(reflected, 0);
+}
