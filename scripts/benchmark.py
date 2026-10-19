@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def sphere_scene(count):
-    scene = json.loads((ROOT / "worlds/closed_room.json").read_text())
+    scene = json.loads((ROOT / "worlds/physical_room.json").read_text())
     light = scene["spheres"][1]
     side = math.ceil((count - 1) ** (1 / 3))
     spheres = [light]
@@ -27,8 +27,9 @@ def sphere_scene(count):
                        -1.5 + (y + 0.5) * spacing,
                        -4.0 + (z + 0.5) * spacing],
             "radius": spacing * 0.30,
-            "color": [0.75, 0.85, 0.95],
-            "mat": ["flat", "metal", "glass"][index % 3],
+            "mat": [{"kind": "diffuse", "albedo": [0.75, 0.85, 0.95]},
+                    {"kind": "conductor", "eta": [0.2, 0.9, 1.1], "k": [3.9, 2.5, 2.1], "roughness": 0.3},
+                    {"kind": "dielectric", "ior": 1.5, "absorption": [0.1, 0.02, 0.01]}][index % 3],
         })
     scene["spheres"] = spheres
     return scene
@@ -37,7 +38,7 @@ def sphere_scene(count):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/rustytracer")
-    parser.add_argument("--output", type=Path, default=ROOT / "target/performance")
+    parser.add_argument("--output", type=Path, default=ROOT / "target/performance-physics")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--width", type=int, default=1920)
@@ -55,7 +56,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     cases = []
     if not args.skip_room:
-        cases.append(("room", ROOT / "worlds/closed_room.json", args.width, args.height, args.samples))
+        cases.append(("room", ROOT / "worlds/physical_room.json", args.width, args.height, args.samples))
     for count in args.spheres:
         scene = args.output / f"spheres-{count}.json"
         scene.write_text(json.dumps(sphere_scene(count), indent=2) + "\n")

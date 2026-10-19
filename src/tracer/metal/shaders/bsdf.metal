@@ -16,7 +16,7 @@ float3 conductor_fresnel(float c,float3 eta,float3 k) {
     float3 t3=c*c*a2b2+s2*s2,t4=t2*s2;
     return 0.5f*rs*(1+(t3-t4)/(t3+t4));
 }
-float ggx_lambda(float c,float a) { return 0.5f*(sqrt(1+a*a*(1-c*c)/(c*c))-1); }
+float ggx_lambda(float c,float a) { return 0.5f*(sqrt(1+a*a*max(0.0f,1-c*c)/(c*c))-1); }
 struct Evaluation { float3 value; float pdf; };
 Evaluation evaluate_bsdf(Material m,float3 wo,float3 wi,float3 n) {
     float no=dot(n,wo),ni=dot(n,wi);
@@ -27,8 +27,10 @@ Evaluation evaluate_bsdf(Material m,float3 wo,float3 wi,float3 n) {
         float nh=max(0.0f,dot(n,h)),oh=abs(dot(wo,h));
         if(oh==0) return {float3(0),0};
         float a=m.eta_roughness.w*m.eta_roughness.w;
-        float denominator=(1-nh*nh)+nh*nh*a*a;
-        float d=a*a/(PI*denominator*denominator);
+        float3 tangent=cross(n,h);
+        float denominator=dot(tangent,tangent)+nh*nh*a*a;
+        float ratio=a/denominator;
+        float d=ratio*ratio/PI;
         float g=1/(1+ggx_lambda(no,a)+ggx_lambda(ni,a));
         return {conductor_fresnel(oh,m.eta_roughness.xyz,m.k_ior.xyz)*(d*g/(4*no*ni)),d*nh/(4*oh)};
     }
@@ -44,8 +46,8 @@ BsdfSample sample_bsdf(Material m,float3 wo,float3 n,float eta_i,float eta_t,thr
         s.wi=local_to_world(float3(r*cos(phi),r*sin(phi),sqrt(1-u)),n);
     } else if(m.flags.x==1 && m.eta_roughness.w>0) {
         float u=random_value(rng),a=m.eta_roughness.w*m.eta_roughness.w;
-        float c=sqrt((1-u)/(1+(a*a-1)*u)),phi=2*PI*random_value(rng),sine=sqrt(max(0.0f,1-c*c));
-        float3 h=local_to_world(float3(sine*cos(phi),sine*sin(phi),c),n);
+        float slope=a*sqrt(u/(1-u)),phi=2*PI*random_value(rng);
+        float3 h=local_to_world(normalize(float3(slope*cos(phi),slope*sin(phi),1)),n);
         if(dot(wo,h)<=0) return s;
         s.wi=reflect(-wo,h);
         if(dot(n,s.wi)<=0) return s;

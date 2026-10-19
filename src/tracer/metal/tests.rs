@@ -327,3 +327,97 @@ fn gpu_diffuse_furnace_matches_analytic_radiance() {
         }
     }
 }
+
+#[test]
+#[ignore = "Requires an Apple GPU"]
+fn gpu_continues_long_cavity_paths_without_truncation() {
+    let mut config = settings(17, 9, 512, Traversal::Linear);
+    config.batch_size = 1;
+    let value = json!({"camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":45},"planes":[],
+        "spheres":[{"center":[0,0,0],"radius":2,"mat":{"kind":"diffuse","albedo":[0.8,0.8,0.8],"emission":[0.2,0.2,0.2],"two_sided":true}}]});
+    let world = World::from_reader(value.to_string().as_bytes(), 17, 9).unwrap();
+    for light_sampling in [false, true] {
+        config.light_sampling = light_sampling;
+        let mut renderer = gpu(&world, config);
+        let frame = renderer.render(config).unwrap();
+        assert!(renderer.last_dispatches > config.image.samples_per_pixel as usize);
+        let mean =
+            frame.linear.iter().map(|p| p[0] as f64).sum::<f64>() / frame.linear.len() as f64;
+        assert!(
+            (mean - 1.).abs() < 0.02,
+            "cavity energy {mean}, MIS {light_sampling}"
+        );
+    }
+}
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_nested_glass_absorption_and_rough_conductors_match_cpu() {
+    let config = settings(40, 24, 1024, Traversal::Hardware);
+    let cases = [
+        json!([
+            {"center":[0,0,0],"radius":2,"mat":{"kind":"dielectric","ior":1.33}},
+            {"center":[0,0,0],"radius":1,"mat":{"kind":"dielectric","ior":1.5,"absorption":[0.2,0.4,0.8]}}
+        ]),
+        json!([
+            {"center":[0,0,0],"radius":2,"mat":{"kind":"conductor","eta":[0.2,0.9,1.1],"k":[3.9,2.5,2.1],"roughness":0.4}}
+        ]),
+        json!([
+            {"center":[0,0,0],"radius":2,"mat":{"kind":"dielectric","ior":1.33}},
+            {"center":[0,0,0],"radius":1,"mat":{"kind":"conductor","eta":[0.2,0.9,1.1],"k":[3.9,2.5,2.1],"roughness":0.4}}
+        ]),
+    ];
+    for spheres in cases {
+        let value = json!({"camera":{"lookfrom":[0,0,5],"lookat":[0,0,0],"fov":45},"environment":[1,1,1],"planes":[],"spheres":spheres});
+        let world = World::from_reader(value.to_string().as_bytes(), 40, 24).unwrap();
+        let scene = crate::tracer::scene::Scene::with_environment(
+            world.get_hitables(),
+            [1., 1., 1.].into(),
+        );
+        let cpu =
+            crate::tracer::render::render_linear(&scene, &world.get_camera(), config, 8).unwrap();
+        for traversal in [Traversal::Linear, Traversal::Hardware] {
+            let config = Settings {
+                traversal,
+                ..config
+            };
+            let frame = gpu(&world, config).render(config).unwrap();
+            let error = frame
+                .linear
+                .iter()
+                .zip(&cpu)
+                .flat_map(|(a, b)| (0..3).map(move |i| (a[i] - b[i]).abs() as f64))
+                .sum::<f64>()
+                / (cpu.len() * 3) as f64;
+            assert!(error < 0.001, "{traversal:?}: material error {error}");
+        }
+    }
+}
+
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_mixed_light_selection_and_emission_match_cpu() {
+    let config = settings(24, 16, 1024, Traversal::Linear);
+    let value = json!({"camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":45},"environment":[0.1,0.1,0.1],
+        "planes":[{"origin":[0,0,-1],"normal":[0,0,1],"mat":{"kind":"diffuse","albedo":[0.5,0.5,0.5]}},
+                  {"origin":[0,0,5],"normal":[0,0,-1],"mat":{"kind":"emitter","emission":[0.5,0.7,1]}}],
+        "spheres":[{"center":[0,0,3],"radius":1,"mat":{"kind":"emitter","emission":[4,3,2]}}]});
+    let world = World::from_reader(value.to_string().as_bytes(), 24, 16).unwrap();
+    let scene =
+        crate::tracer::scene::Scene::with_environment(world.get_hitables(), [0.1, 0.1, 0.1].into());
+    let cpu = crate::tracer::render::render_linear(&scene, &world.get_camera(), config, 8).unwrap();
+    for traversal in [Traversal::Linear, Traversal::Hardware] {
+        let config = Settings {
+            traversal,
+            ..config
+        };
+        let frame = gpu(&world, config).render(config).unwrap();
+        let error = frame
+            .linear
+            .iter()
+            .zip(&cpu)
+            .flat_map(|(a, b)| (0..3).map(move |i| (a[i] - b[i]).abs() as f64))
+            .sum::<f64>()
+            / (cpu.len() * 3) as f64;
+        assert!(error < 0.0001, "Multiple-light PDF/selection error {error}");
+    }
+}

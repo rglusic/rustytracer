@@ -98,3 +98,41 @@ fn missing_and_malformed_scenes_return_errors() {
     assert!(error.to_string().contains("missing-scene.json"));
     assert!(World::from_reader(b"{ malformed JSON".as_slice(), 3, 2).is_err());
 }
+
+#[test]
+fn rejects_unphysical_and_ambiguous_materials() {
+    for mat in [
+        json!("unknown"),
+        json!({"kind":"diffuse","albedo":[1.1,0,0]}),
+        json!({"kind":"dielectric","ior":0.5}),
+        json!({"kind":"dielectric","absorption":[-1,0,0]}),
+        json!({"kind":"conductor"}),
+        json!({"kind":"conductor","eta":[0,1,1],"k":[1,1,1]}),
+        json!({"kind":"diffuse","roughness":0.5}),
+        json!({"kind":"emitter"}),
+        json!({"kind":"diffuse","emision":[1,1,1]}),
+    ] {
+        let mut value = fixture();
+        value["spheres"][0]["mat"] = mat.clone();
+        assert!(load(&value, 3, 2).is_err(), "accepted {mat}");
+    }
+    let mut value = fixture();
+    value["planes"][0]["mat"] = json!("glass");
+    assert!(load(&value, 3, 2).is_err());
+    let mut value = fixture();
+    value["spheres"][1]["mat"] = json!("glass");
+    value["spheres"][1]["center"] = json!([0, 1, 0]);
+    assert!(load(&value, 3, 2).is_err());
+}
+#[test]
+fn emitter_color_is_radiance_and_reflectance_cannot_exceed_one() {
+    let mut value = fixture();
+    value["spheres"][1]["color"] = json!([1, 2, 3]);
+    let world = load(&value, 3, 2).unwrap();
+    assert_eq!(
+        world.get_hitables()[7].material().emission,
+        Vector3::new(1., 2., 3.)
+    );
+    value["planes"][0]["color"] = json!([1.01, 1, 1]);
+    assert!(load(&value, 3, 2).is_err());
+}

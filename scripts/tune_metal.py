@@ -10,7 +10,7 @@ import subprocess
 def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scene", type=Path, default=root / "worlds/closed_room.json")
+    parser.add_argument("--scene", type=Path, default=root / "worlds/physical_room.json")
     parser.add_argument("--traversal", choices=["linear", "hardware"], default="linear")
     parser.add_argument("--output", type=Path, default=root / "target/tuning")
     args = parser.parse_args()

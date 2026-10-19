@@ -87,3 +87,28 @@ fn unsupported_output_formats_fail_before_rendering() {
     assert!(error.to_string().contains("PNG or JPEG"));
     assert!(!output.exists());
 }
+
+#[test]
+fn openexr_round_trip_preserves_hdr_radiance_and_ignores_display_exposure() {
+    let directory = TestDirectory::new();
+    let output = directory.0.join("linear.exr");
+    let frame = Frame {
+        linear: vec![[0.18, 2., 100., 0.]],
+        render_seconds: 0.,
+        gpu_seconds: None,
+    };
+    frame
+        .save(
+            RenderOptions {
+                width: 1,
+                height: 1,
+                samples_per_pixel: 1,
+            },
+            &output,
+            image::ImageFormat::OpenExr,
+            -5.,
+        )
+        .unwrap();
+    let image = image::open(output).unwrap().to_rgb32f();
+    assert_eq!(image.get_pixel(0, 0).0, [0.18, 2., 100.]);
+}

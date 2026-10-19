@@ -11,6 +11,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Camera {
     pub lookfrom: [f64; 3],
     pub lookat: [f64; 3],
@@ -18,6 +19,7 @@ pub(super) struct Camera {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Plane {
     pub origin: [f64; 3],
     pub normal: [f64; 3],
@@ -27,6 +29,7 @@ pub(super) struct Plane {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Sphere {
     #[serde(default = "white_color")]
     pub color: [f64; 3],
@@ -36,6 +39,7 @@ pub(super) struct Sphere {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub(super) struct WorldJson {
     pub camera: Camera,
     #[serde(default)]
@@ -178,6 +182,12 @@ fn validate_media(json: &WorldJson) -> Result<()> {
     for (i, a) in json.spheres.iter().enumerate() {
         if materials[i].kind != Kind::Dielectric {
             continue;
+        }
+        let camera_distance =
+            (Vector3::from(json.camera.lookfrom) - Vector3::from(a.center)).magnitude();
+        if (camera_distance - a.radius).abs() <= geometry::gamma(16) * (camera_distance + a.radius)
+        {
+            return Err(invalid_scene("Camera lies on an ambiguous dielectric boundary").into());
         }
         for (j, b) in json.spheres.iter().enumerate().skip(i + 1) {
             if materials[j].kind != Kind::Dielectric {

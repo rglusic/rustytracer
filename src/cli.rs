@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 #[command(version, about = "A CPU and native Metal path tracer")]
 pub struct Cli {
-    #[arg(long, default_value = "worlds/closed_room.json")]
+    #[arg(long, default_value = "worlds/physical_room.json")]
     pub scene: PathBuf,
     #[arg(short, long, default_value = "output/image.png")]
     pub output: PathBuf,
@@ -26,6 +26,9 @@ pub struct Cli {
     /// Disable direct light sampling for estimator comparisons.
     #[arg(long)]
     pub no_light_sampling: bool,
+    /// Display exposure in stops; EXR always stores raw scene-linear radiance.
+    #[arg(long, default_value_t = 0.0, allow_hyphen_values = true)]
+    pub exposure: f64,
     #[arg(long, default_value_t = 32, value_parser = clap::value_parser!(u32).range(1..=1024))]
     pub batch_size: u32,
     #[arg(long, default_value_t = 128)]
@@ -38,6 +41,9 @@ pub struct Cli {
     /// Write timing and workload metadata as JSON.
     #[arg(long)]
     pub metrics: Option<PathBuf>,
+    /// Linear OpenEXR reference for per-run radiance MSE.
+    #[arg(long)]
+    pub reference: Option<PathBuf>,
     #[arg(long)]
     pub progress: bool,
     #[arg(long)]

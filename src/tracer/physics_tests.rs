@@ -1,6 +1,6 @@
 use super::Settings;
 use super::geometry::{Hitable, Plane, Shape, Sphere};
-use super::material::{Color, Kind, Material, black};
+use super::material::{Color, Material, black};
 use super::ray::Ray;
 use super::sampler::Sampler;
 use super::scene::Scene;
@@ -121,21 +121,38 @@ fn nested_dielectrics_choose_the_actual_surrounding_medium() {
 }
 #[test]
 fn roulette_and_unlimited_depth_do_not_lose_enclosure_energy() {
-    // Concentric spheres: a diffuse interior surface always sees the enclosing emitter.
-    let light = Material {
-        kind: Kind::Emitter,
-        emission: Color::new(2., 2., 2.),
+    // A uniformly emitting diffuse cavity has L = Le / (1 - reflectance).
+    // Every sample necessarily reaches roulette; no geometric escape is possible.
+    let m = Material {
+        emission: Color::new(0.2, 0.2, 0.2),
         two_sided: true,
-        ..Material::diffuse(black())
+        ..Material::diffuse(Color::new(0.8, 0.8, 0.8))
     };
     let scene = Scene::with_environment(
         vec![Arc::new(Sphere {
             center: black(),
             radius: 2.,
-            material: light,
+            material: m,
         })],
         black(),
     );
-    let value = estimate(&scene, Settings::default(), 1000, 31);
-    assert!((value - Color::new(2., 2., 2.)).magnitude() < 1e-12);
+    let settings = Settings {
+        light_sampling: false,
+        ..Settings::default()
+    };
+    let value = estimate(&scene, settings, 100_000, 31);
+    assert!(
+        (value - Color::new(1., 1., 1.)).magnitude() < 0.01,
+        "{value:?}"
+    );
+    let truncated = estimate(
+        &scene,
+        Settings {
+            max_bounces: 1,
+            ..settings
+        },
+        100,
+        31,
+    );
+    assert!((truncated - Color::new(0.36, 0.36, 0.36)).magnitude() < 1e-12);
 }

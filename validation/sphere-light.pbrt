@@ -1,0 +1,24 @@
+# PBRT v3 RGB reference for scripts/validate_physics.py.
+# A nearly point-like camera views a 50% diffuse plane one metre below it.
+# A sphere of radius 1 m and radiance 4 is centred four metres above the hit.
+# Analytical outgoing radiance: 0.5 * 4 * (1/4)^2 = 0.125.
+LookAt 0 0 0  0 0 -1  0 1 0
+Camera "perspective" "float fov" [0.001]
+Film "image" "integer xresolution" [16] "integer yresolution" [16]
+    "string filename" ["REFERENCE_OUTPUT.exr"]
+PixelFilter "box" "float xwidth" [0.5] "float ywidth" [0.5]
+Sampler "random" "integer pixelsamples" [32768]
+Integrator "path" "integer maxdepth" [256] "float rrthreshold" [0]
+WorldBegin
+AttributeBegin
+    Material "matte" "rgb Kd" [0.5 0.5 0.5] "float sigma" [0]
+    Shape "trianglemesh" "integer indices" [0 1 2 0 2 3]
+        "point P" [-100 -100 -1  100 -100 -1  100 100 -1  -100 100 -1]
+AttributeEnd
+AttributeBegin
+    Translate 0 0 3
+    AreaLightSource "diffuse" "rgb L" [4 4 4] "bool twosided" ["false"]
+    Material "matte" "rgb Kd" [0 0 0]
+    Shape "sphere" "float radius" [1]
+AttributeEnd
+WorldEnd

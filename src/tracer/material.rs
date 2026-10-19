@@ -46,6 +46,14 @@ impl Material {
             two_sided: false,
         }
     }
+    /// Optical constants are absolute (vacuum-relative); the interface needs relative indices.
+    pub fn in_medium(mut self, ior: f64) -> Self {
+        if self.kind == Kind::Conductor {
+            self.eta /= ior;
+            self.k /= ior;
+        }
+        self
+    }
     pub fn emitted(&self, normal: Color, outgoing: Color) -> Color {
         if self.two_sided || normal.dot(outgoing) > 0. {
             self.emission
@@ -73,7 +81,7 @@ impl Material {
                     return (black(), 0.);
                 }
                 let alpha = self.roughness * self.roughness;
-                let d = ggx_d(nh, alpha);
+                let d = ggx_d(nh, n.cross(h).magnitude2(), alpha);
                 let g = 1. / (1. + ggx_lambda(no, alpha) + ggx_lambda(ni, alpha));
                 (
                     conductor_fresnel(oh, self.eta, self.k) * (d * g / (4. * no * ni)),
@@ -119,10 +127,12 @@ impl Material {
             Kind::Conductor => {
                 let u = rng.next();
                 let alpha = self.roughness * self.roughness;
-                let cosine = ((1. - u) / (1. + (alpha * alpha - 1.) * u)).sqrt();
+                let slope = alpha * (u / (1. - u)).sqrt();
                 let phi = 2. * PI * rng.next();
-                let sine = (1. - cosine * cosine).max(0.).sqrt();
-                let h = local_to_world(Color::new(sine * phi.cos(), sine * phi.sin(), cosine), n);
+                let h = local_to_world(
+                    Color::new(slope * phi.cos(), slope * phi.sin(), 1.).normalize(),
+                    n,
+                );
                 if wo.dot(h) <= 0. {
                     return None;
                 }
@@ -249,12 +259,13 @@ pub fn conductor_fresnel(cosine: f64, eta: Color, k: Color) -> Color {
         channel(eta.z, k.z),
     )
 }
-fn ggx_d(c: f64, a: f64) -> f64 {
-    let d = (1. - c * c) + c * c * a * a;
-    a * a / (PI * d * d)
+fn ggx_d(c: f64, sin2: f64, a: f64) -> f64 {
+    let d = sin2 + c * c * a * a;
+    let ratio = a / d;
+    ratio * ratio / PI
 }
 fn ggx_lambda(c: f64, a: f64) -> f64 {
-    0.5 * ((1. + a * a * (1. - c * c) / (c * c)).sqrt() - 1.)
+    0.5 * ((1. + a * a * (1. - c * c).max(0.) / (c * c)).sqrt() - 1.)
 }
 pub fn local_to_world(v: Color, n: Color) -> Color {
     let helper = if n.z.abs() < 0.999 {

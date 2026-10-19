@@ -52,7 +52,26 @@ impl MaterialInput {
             }
             Self::Parameters(p) => {
                 m.kind = p.kind;
-                m.albedo = checked(p.albedo.unwrap_or(color), "Albedo", true)?;
+                if p.albedo.is_some() && !matches!(p.kind, Kind::Diffuse | Kind::Mirror) {
+                    return Err(invalid(
+                        "Albedo is only defined for diffuse and ideal mirror materials",
+                    ));
+                }
+                if matches!(p.kind, Kind::Dielectric | Kind::Conductor) && legacy != white() {
+                    return Err(invalid(
+                        "Use absorption for glass or eta/k for conductors instead of object color",
+                    ));
+                }
+                m.albedo = checked(
+                    p.albedo
+                        .unwrap_or(if matches!(p.kind, Kind::Diffuse | Kind::Mirror) {
+                            color
+                        } else {
+                            [0.; 3]
+                        }),
+                    "Albedo",
+                    true,
+                )?;
                 m.emission = checked(p.emission.unwrap_or([0.; 3]), "Emission", false)?;
                 m.absorption = checked(p.absorption.unwrap_or([0.; 3]), "Absorption", false)?;
                 m.ior = p.ior.unwrap_or(1.5);
@@ -79,9 +98,12 @@ impl MaterialInput {
                         "k",
                         false,
                     )?;
+                    if p.albedo.is_some() {
+                        return Err(invalid("Conductor reflectance uses eta and k, not albedo"));
+                    }
                     if [m.eta.x, m.eta.y, m.eta.z, m.k.x, m.k.y, m.k.z]
                         .iter()
-                        .any(|v| *v <= 0.)
+                        .any(|v| *v <= 0. || !(16. * v.powi(4)).is_normal())
                     {
                         return Err(invalid("Conductor eta and k must be positive"));
                     }
@@ -96,7 +118,7 @@ impl MaterialInput {
                         "Dielectric tint is defined by absorption, not albedo",
                     ));
                 }
-                if m.kind != Kind::Conductor && m.roughness != 0. {
+                if m.kind != Kind::Conductor && p.roughness.is_some() {
                     return Err(invalid("Roughness currently requires a conductor"));
                 }
             }
@@ -106,6 +128,8 @@ impl MaterialInput {
         }
         if !m.ior.is_finite()
             || m.ior < 1.
+            || !m.ior.powi(2).is_finite()
+            || !m.ior.recip().powi(2).is_normal()
             || !m.roughness.is_finite()
             || !(0. ..=1.).contains(&m.roughness)
         {

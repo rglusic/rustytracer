@@ -61,6 +61,7 @@ bool advance_path(thread PathState &s,Query query,constant Parameters &p,device 
     s.beta.xyz*=exp(-absorption*hit.distance);
     Surface surface=hit_surface(s.origin.xyz,s.direction.xyz,hit,spheres,planes);
     Material m=hit_material(hit,spheres,planes);
+    if(m.flags.x==1) { m.eta_roughness.xyz/=eta_i; m.k_ior.xyz/=eta_i; }
     float3 wo=-s.direction.xyz;
     bool front=dot(surface.normal,wo)>0;
     float3 n=front ? surface.normal : -surface.normal;

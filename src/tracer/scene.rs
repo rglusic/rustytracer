@@ -88,7 +88,7 @@ impl Scene {
                 break;
             };
             beta = multiply(beta, attenuate(absorption, hit.distance));
-            let m = self.renderables[hit.index].material();
+            let m = self.renderables[hit.index].material().in_medium(eta_i);
             let surface = hit.surface;
             let wo = -*ray.direction();
             let front = surface.normal.dot(wo) > 0.;
@@ -112,7 +112,7 @@ impl Scene {
                 break;
             }
             if settings.light_sampling && !m.is_delta() {
-                radiance += multiply(beta, self.direct_light(surface, wo, n, m, absorption, rng));
+                radiance += multiply(beta, self.direct_light(surface, wo, n, &m, absorption, rng));
             }
             let eta_t = if front {
                 m.ior

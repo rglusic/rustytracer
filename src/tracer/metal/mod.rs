@@ -36,6 +36,8 @@ pub(super) struct MetalRenderer {
     unfinished: MetalObject<dyn MTLBuffer>,
     lights: MetalObject<dyn MTLBuffer>,
     data: SceneData,
+    #[cfg(test)]
+    last_dispatches: usize,
     hardware: Option<acceleration::Hardware>,
     #[cfg(test)]
     library: MetalObject<dyn MTLLibrary>,
@@ -142,6 +144,8 @@ impl MetalRenderer {
                 unfinished,
                 lights,
                 data,
+                #[cfg(test)]
+                last_dispatches: 0,
                 hardware,
                 #[cfg(test)]
                 library,
@@ -167,6 +171,10 @@ impl MetalRenderer {
 
     fn render_inner(&mut self, settings: Settings) -> Result<Frame> {
         let started = Instant::now();
+        #[cfg(test)]
+        {
+            self.last_dispatches = 0;
+        }
         let count = settings.image.width as usize * settings.image.height as usize;
         if self.data.parameters.width != settings.image.width
             || self.data.parameters.height != settings.image.height
@@ -192,6 +200,10 @@ impl MetalRenderer {
                 // SAFETY: shared counter has one u32, and the previous command completed.
                 unsafe {
                     self.unfinished.contents().as_ptr().cast::<u32>().write(0);
+                }
+                #[cfg(test)]
+                {
+                    self.last_dispatches += 1;
                 }
                 let command = self
                     .queue

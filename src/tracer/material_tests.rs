@@ -117,3 +117,28 @@ fn emission_is_explicit_and_sided_and_absorption_depends_on_distance() {
             < 1e-14
     );
 }
+
+#[test]
+fn conductor_fresnel_uses_the_surrounding_medium() {
+    let absolute = Material {
+        kind: Kind::Conductor,
+        eta: Color::new(0.2, 0.9, 1.1),
+        k: Color::new(3.9, 2.5, 2.1),
+        ..Material::diffuse(white())
+    };
+    let immersed = absolute.in_medium(1.33);
+    let sample = immersed
+        .sample(
+            Color::unit_z(),
+            Color::unit_z(),
+            1.33,
+            1.,
+            &mut Sampler::new(1, 0, 0),
+        )
+        .unwrap();
+    for c in 0..3 {
+        let expected = ((absolute.eta[c] - 1.33).powi(2) + absolute.k[c].powi(2))
+            / ((absolute.eta[c] + 1.33).powi(2) + absolute.k[c].powi(2));
+        assert!((sample.weight(Color::unit_z())[c] - expected).abs() < 1e-12);
+    }
+}

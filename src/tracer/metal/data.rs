@@ -121,6 +121,41 @@ impl SceneData {
                 continue;
             }
             let a = &d.spheres[i];
+            let packed_center = Vector3::new(
+                spheres[i].center_radius[0],
+                spheres[i].center_radius[1],
+                spheres[i].center_radius[2],
+            );
+            let packed_radius = spheres[i].center_radius[3];
+            let packed_camera = Vector3::new(camera[0][0], camera[0][1], camera[0][2]);
+            let packed_distance = (packed_camera - packed_center).magnitude();
+            let actual_inside =
+                (Vector3::from(d.camera.lookfrom) - Vector3::from(a.center)).magnitude() < a.radius;
+            if actual_inside != (packed_distance < packed_radius)
+                || (packed_distance - packed_radius).abs()
+                    <= 16. * f32::EPSILON * (packed_distance + packed_radius)
+            {
+                return Err(
+                    io::Error::other("Camera medium is ambiguous at Metal f32 precision").into(),
+                );
+            }
+            for (j, b) in spheres.iter().enumerate() {
+                if i == j || b.material.flags[0] != Kind::Dielectric as u32 {
+                    continue;
+                }
+                let center =
+                    Vector3::new(b.center_radius[0], b.center_radius[1], b.center_radius[2]);
+                let distance = (center - packed_center).magnitude();
+                let radius = b.center_radius[3];
+                if distance < radius + packed_radius
+                    && distance + radius.min(packed_radius) >= radius.max(packed_radius)
+                {
+                    return Err(io::Error::other(
+                        "Dielectric boundaries overlap at Metal f32 precision",
+                    )
+                    .into());
+                }
+            }
             let mut parent = 0;
             let mut parent_radius = f64::INFINITY;
             for (j, b) in d.spheres.iter().enumerate() {
@@ -144,14 +179,15 @@ impl SceneData {
             }
         }
         let mut lights = Vec::new();
-        for (i, s) in spheres.iter().enumerate() {
-            if s.material.emission[..3].iter().any(|x| *x > 0.) {
-                lights.push([0, i.try_into()?, 0, 0]);
-            }
-        }
+        // Match the CPU scene's plane-then-sphere light ordering for seeded parity.
         for (i, p) in planes.iter().enumerate() {
             if p.material.emission[..3].iter().any(|x| *x > 0.) {
                 lights.push([1, i.try_into()?, 0, 0]);
+            }
+        }
+        for (i, s) in spheres.iter().enumerate() {
+            if s.material.emission[..3].iter().any(|x| *x > 0.) {
+                lights.push([0, i.try_into()?, 0, 0]);
             }
         }
         if d.environment.iter().any(|x| *x > 0.) {
@@ -194,9 +230,12 @@ fn material(m: CpuMaterial) -> Result<Material> {
         && result.eta_roughness[..3]
             .iter()
             .chain(&result.k_ior[..3])
-            .any(|v| !v.powi(4).is_normal())
+            .any(|v| !(16. * v.powi(4)).is_normal())
     {
         return Err(io::Error::other("Optical constants exceed Metal f32 arithmetic range").into());
+    }
+    if !result.k_ior[3].powi(2).is_finite() || !result.k_ior[3].recip().powi(2).is_normal() {
+        return Err(io::Error::other("IOR exceeds Metal f32 arithmetic range").into());
     }
     if m.roughness > 0. && !result.eta_roughness[3].powi(4).is_normal() {
         return Err(io::Error::other("Roughness below Metal f32 precision").into());
@@ -205,7 +244,14 @@ fn material(m: CpuMaterial) -> Result<Material> {
 }
 fn pack(v: [f64; 3], w: f64) -> Result<[f32; 4]> {
     let packed = [v[0] as f32, v[1] as f32, v[2] as f32, w as f32];
-    if packed.iter().any(|v| !v.is_finite()) {
+    if packed
+        .iter()
+        .any(|v| !v.is_finite() || (*v != 0. && !v.is_normal()))
+        || v.iter()
+            .zip(&packed[..3])
+            .any(|(original, packed)| *original != 0. && *packed == 0.)
+        || (w != 0. && packed[3] == 0.)
+    {
         return Err(io::Error::other("Scene value outside Metal f32 range").into());
     }
     Ok(packed)
@@ -217,5 +263,6 @@ mod tests {
     fn rejects_values_outside_gpu_range() {
         assert!(pack([1e100, 0., 0.], 0.).is_err());
         assert!(pack([f64::NAN, 0., 0.], 0.).is_err());
+        assert!(pack([1e-100, 0., 0.], 0.).is_err());
     }
 }
