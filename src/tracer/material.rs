@@ -1,19 +1,15 @@
-use cgmath::*;
-use super::ray;
 use super::geometry;
-use rand::*;
+use super::ray;
+use cgmath::*;
+use rand::RngExt;
 
-use std::sync::Arc;
 use std::collections::HashMap as Map;
-use std::error::Error;
+use std::sync::Arc;
 
 pub trait Material: Send + Sync {
     fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64);
     fn emitted(&self) -> Vector3<f64> {
-        Vector3::new(0.0,0.0,0.0)
-    }
-    fn importance_scatter(&self, r_in: &ray::Ray, r_scatter: &ray::Ray) -> f64 {
-        return 0.0;
+        Vector3::new(0.0, 0.0, 0.0)
     }
 }
 
@@ -22,12 +18,9 @@ pub struct Flat {}
 impl Material for Flat {
     fn scatter(&self, r: &ray::Ray, n: &Vector3<f64>, p: &Vector3<f64>) -> (ray::Ray, f64) {
         let direction = n + geometry::rand_usphere();
-        let direction = direction/direction.dot(direction).sqrt();
-        let pdf = n.dot(*r.direction())/3.14159;
+        let direction = direction / direction.dot(direction).sqrt();
+        let pdf = n.dot(*r.direction()) / std::f64::consts::PI;
         (ray::Ray::new_from(*p, direction), pdf)
-    }
-    fn importance_scatter(&self, r_in: &ray::Ray, r_scatter: &ray::Ray) -> f64 {
-        return 0.0;
     }
 }
 
@@ -41,7 +34,7 @@ impl Material for Metal {
 }
 
 pub struct Dielectric {
-    ref_index: f64
+    ref_index: f64,
 }
 
 impl Dielectric {
@@ -60,21 +53,22 @@ impl Material for Dielectric {
         if r.direction().dot(*n) < 0.0 {
             outward_normal = *n;
             ni_over_nt = 1.0 / self.ref_index;
-            cos = -1.0 * r.direction().dot(*n)/r.direction().magnitude();
-        } else { //out
+            cos = -r.direction().dot(*n) / r.direction().magnitude();
+        } else {
+            //out
             outward_normal = -1.0 * n;
             ni_over_nt = self.ref_index;
-            cos = self.ref_index * r.direction().dot(*n)/r.direction().magnitude();
+            cos = self.ref_index * r.direction().dot(*n) / r.direction().magnitude();
         }
         let refraction = refract(r.direction(), &outward_normal, ni_over_nt);
         let reflect_prob: f64 = schlick(cos, self.ref_index);
-        let mut rng = rand::thread_rng();
-        let rng: f64 = rng.gen();
+        let mut rng = rand::rng();
+        let rng: f64 = rng.random();
 
         if rng < reflect_prob {
             return (ray::Ray::new_from(*p, reflection), 0.0);
         }
-        
+
         (ray::Ray::new_from(*p, refraction), 0.0)
     }
 }
@@ -84,15 +78,15 @@ fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
 }
 
 fn refract(v: &Vector3<f64>, n: &Vector3<f64>, ni_over_nt: f64) -> Vector3<f64> {
-    let c1 = -1.0 * v.dot(*n);
-    let c2 = (1.0 - ni_over_nt*ni_over_nt * (1.0 - c1*c1)).sqrt();
+    let c1 = -v.dot(*n);
+    let c2 = (1.0 - ni_over_nt * ni_over_nt * (1.0 - c1 * c1)).sqrt();
     (ni_over_nt * v) + (ni_over_nt * c1 - c2) * n
 }
 
 fn schlick(cos: f64, index: f64) -> f64 {
-    let r0 = (1.0-index)/(1.0+index);
-    let r0 = r0*r0;
-    r0 + (1.0-r0)*(1.0-cos).powf(5.0)
+    let r0 = (1.0 - index) / (1.0 + index);
+    let r0 = r0 * r0;
+    r0 + (1.0 - r0) * (1.0 - cos).powf(5.0)
 }
 
 pub struct DiffuseLight {
@@ -100,15 +94,20 @@ pub struct DiffuseLight {
 }
 
 impl DiffuseLight {
-    pub fn new(r:f64, g: f64, b: f64) -> DiffuseLight {
-        DiffuseLight {light_color: Vector3::new(r,g,b)}
+    pub fn new(r: f64, g: f64, b: f64) -> DiffuseLight {
+        DiffuseLight {
+            light_color: Vector3::new(r, g, b),
+        }
     }
 }
 
 impl Material for DiffuseLight {
     fn scatter(&self, _: &ray::Ray, _: &Vector3<f64>, _: &Vector3<f64>) -> (ray::Ray, f64) {
         //Terminate ray at light source.
-        (ray::Ray::new_from(Vector3::new(0.0,0.0,0.0), Vector3::new(0.0,0.0,0.0)), 0.0)
+        (
+            ray::Ray::new_from(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0)),
+            0.0,
+        )
     }
     fn emitted(&self) -> Vector3<f64> {
         self.light_color
@@ -122,22 +121,25 @@ pub struct MaterialsFactory {
 impl MaterialsFactory {
     pub fn new() -> MaterialsFactory {
         let mut all_materials: Map<&'static str, Arc<dyn Material>> = Map::new();
-        all_materials.insert("flat", Arc::new(Flat{}));
-        all_materials.insert("metal", Arc::new(Metal{}));
+        all_materials.insert("flat", Arc::new(Flat {}));
+        all_materials.insert("metal", Arc::new(Metal {}));
         all_materials.insert("glass", Arc::new(Dielectric::new(1.5))); //Default to standard glass
-        all_materials.insert("diffuse_light", Arc::new(DiffuseLight::new(1.0*2.5, 1.0*2.5, 0.98431372549*2.5))); //Sunlight at 5400K
+        all_materials.insert(
+            "diffuse_light",
+            Arc::new(DiffuseLight::new(1.0 * 2.5, 1.0 * 2.5, 0.98431372549 * 2.5)),
+        ); //Sunlight at 5400K
 
-        MaterialsFactory {materials_list: all_materials}
+        MaterialsFactory {
+            materials_list: all_materials,
+        }
     }
 
     pub fn get_material_by_key(&self, material_type: String) -> Arc<dyn Material> {
         let res = self.materials_list.get(material_type.as_str());
         match res {
-            Some(result) => {
-                result.clone()
-            },
+            Some(result) => result.clone(),
             None => {
-                println!("Error, material '{}' not found. Returning flat material", material_type);
+                println!("Error, material '{material_type}' not found. Returning flat material");
                 self.materials_list.get("flat").unwrap().clone()
             }
         }

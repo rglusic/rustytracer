@@ -1,12 +1,9 @@
 use super::geometry::*;
-use super::light::*;
-use super::ray::*;
 use super::material::*;
+use super::ray::*;
 use cgmath::*;
+use rand::RngExt;
 use std::sync::Arc;
-extern crate rand;
-
-use rand::*;
 
 pub struct Scene {
     renderables: Vec<Arc<dyn Hitable>>,
@@ -15,22 +12,25 @@ pub struct Scene {
 
 impl Scene {
     pub fn new(render_list: Vec<Arc<dyn Hitable>>) -> Scene {
-        Scene { renderables: render_list, materials: MaterialsFactory::new() }
+        Scene {
+            renderables: render_list,
+            materials: MaterialsFactory::new(),
+        }
     }
 
     pub fn get_closest_intersection(&self, ray: &Ray) -> f64 {
-        let mut t = std::f64::MAX;
+        let mut t = f64::MAX;
         for hitable in &*self.renderables {
-            let t2 = hitable.hit(ray, std::f64::MAX);
+            let t2 = hitable.hit(ray, f64::MAX);
             if t > t2 && t2 != 0.0 {
                 t = t2;
             }
         }
 
-        if t == std::f64::MAX {
+        if t == f64::MAX {
             t = -1.0;
         }
-        t        
+        t
     }
 
     //fn _shadow_march(&self, p: &Vector3<f64>, n: &Vector3<f64>) -> f64 {
@@ -56,7 +56,7 @@ impl Scene {
     pub fn render(&self, ray: &Ray, depth: i64, t_max: f64) -> Vector3<f64> {
         //Prevent infinite loops.
         if depth > 3 {
-            let rng = rand::thread_rng().gen::<f64>();
+            let rng = rand::rng().random::<f64>();
             if rng > 0.3 {
                 return Vector3::new(0.0, 0.0, 0.0);
             }
@@ -71,14 +71,24 @@ impl Scene {
 
             let p = ray.point_at_parameter(t2);
             let n = hitable.get_norm_at_p(&p);
-            let emitted = self.materials.get_material_by_key(hitable.get_material()).emitted();
+            let emitted = self
+                .materials
+                .get_material_by_key(hitable.get_material())
+                .emitted();
 
-            let (new_ray, scattered) = self.materials.get_material_by_key(hitable.get_material()).scatter(ray, &n, &p);
+            let (new_ray, _scattered) = self
+                .materials
+                .get_material_by_key(hitable.get_material())
+                .scatter(ray, &n, &p);
 
-            let col = self.render(&new_ray, depth+1, t_max);
-            return emitted + Vector3::new(hitable.get_color().x * col.x, hitable.get_color().y * col.y, hitable.get_color().z * col.z);
+            let col = self.render(&new_ray, depth + 1, t_max);
+            return emitted
+                + Vector3::new(
+                    hitable.get_color().x * col.x,
+                    hitable.get_color().y * col.y,
+                    hitable.get_color().z * col.z,
+                );
         }
-        return Vector3::new(0.0,0.0,0.0);
+        Vector3::new(0.0, 0.0, 0.0)
     }
-
 }
