@@ -17,8 +17,8 @@ fn settings(width: u32, height: u32, samples: u32, traversal: Traversal) -> Sett
 }
 
 fn room(settings: Settings) -> World {
-    // Absorbing walls make pointwise f32/f64 parity meaningful. The lossless
-    // enclosure is tested separately against analytic energy expectations.
+    // Absorbing walls make pointwise f32/f64 parity meaningful;
+    // furnace and cavity energy are tested separately against analytic expectations.
     let mut value: serde_json::Value =
         serde_json::from_slice(include_bytes!("../../../worlds/closed_room.json")).unwrap();
     for plane in value["planes"].as_array_mut().unwrap() {
@@ -419,5 +419,33 @@ fn gpu_mixed_light_selection_and_emission_match_cpu() {
             .sum::<f64>()
             / (cpu.len() * 3) as f64;
         assert!(error < 0.0001, "Multiple-light PDF/selection error {error}");
+    }
+}
+
+#[test]
+#[ignore = "Requires an M3 or newer Apple GPU"]
+fn gpu_camera_inside_absorbing_glass_matches_analytic_radiance() {
+    let config = settings(16, 8, 256, Traversal::Linear);
+    let value = json!({"camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":45},"environment":[1,1,1],"planes":[],
+        "spheres":[{"center":[0,0,0],"radius":2,"mat":{"kind":"dielectric","ior":1.5,"absorption":[0.1,0.2,0.3]}}]});
+    let world = World::from_reader(value.to_string().as_bytes(), 16, 8).unwrap();
+    for traversal in [Traversal::Linear, Traversal::Hardware] {
+        let config = Settings {
+            traversal,
+            ..config
+        };
+        let mut renderer = gpu(&world, config);
+        assert_eq!(renderer.data.parameters.camera_medium, 1);
+        let frame = renderer.render(config).unwrap();
+        for (channel, sigma) in [0.1_f64, 0.2, 0.3].into_iter().enumerate() {
+            // First segment is 2 m; each internal reflection adds a 4 m diameter.
+            let expected = 2.25 * 0.96 * (-2. * sigma).exp() / (1. - 0.04 * (-4. * sigma).exp());
+            let mean = frame.linear.iter().map(|p| p[channel] as f64).sum::<f64>()
+                / frame.linear.len() as f64;
+            assert!(
+                (mean - expected).abs() < 0.01,
+                "{traversal:?}: inside-glass radiance {mean}, expected {expected}"
+            );
+        }
     }
 }
