@@ -1,7 +1,7 @@
 //! Safe-math shader compilation and traversal-specific compute pipeline preparation.
 use super::MetalObject;
 use super::acceleration::Hardware;
-use super::data::SceneData;
+use super::scene::SceneData;
 use crate::tracer::{Result, Traversal};
 use objc2::runtime::ProtocolObject;
 use objc2_foundation::NSString;

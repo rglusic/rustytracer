@@ -1,4 +1,5 @@
 mod geometry;
+mod scene;
 mod scheduling;
 mod transport;
 

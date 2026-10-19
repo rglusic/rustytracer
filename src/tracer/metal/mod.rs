@@ -3,17 +3,19 @@ mod acceleration;
 mod buffers;
 mod data;
 mod dispatch;
+mod packing;
 mod pipeline;
+mod scene;
 
 use super::frame::Frame;
 use super::world::World;
 use super::{Result, Settings};
 use buffers::Buffers;
-use data::SceneData;
 use objc2::rc::{Retained, autoreleasepool};
 use objc2::runtime::ProtocolObject;
 use objc2_metal::{MTLCommandQueue, MTLCreateSystemDefaultDevice, MTLDevice};
 use pipeline::Pipeline;
+use scene::SceneData;
 use std::io;
 use std::time::Instant;
 

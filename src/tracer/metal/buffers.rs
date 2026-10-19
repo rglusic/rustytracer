@@ -1,6 +1,7 @@
 //! Owned scene, film, and continuation buffers with isolated CPU pointer access.
 use super::MetalObject;
-use super::data::{PathState, SceneData};
+use super::data::PathState;
+use super::scene::SceneData;
 use crate::tracer::Result;
 use objc2::runtime::ProtocolObject;
 use objc2_metal::{MTLBuffer, MTLDevice, MTLResourceOptions};
