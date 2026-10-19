@@ -1,5 +1,5 @@
 use super::*;
-use crate::tracer::geometry::{Plane, Sphere};
+use crate::tracer::geometry::{Plane, Shape, Sphere};
 use crate::tracer::material::{Material, uniform_sphere};
 use std::sync::atomic::{AtomicUsize, Ordering};
 

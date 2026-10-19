@@ -124,6 +124,19 @@ retaining the latter, including 4096-sphere hardware traversal at 0.0234s versus
 the recorded 0.0281s baseline (PNG included). Final measurements will recheck the
 combined implementation with the same workloads.
 
+Milestone 2 completed: CPU paths retain their medium, with parent relationships
+prepared once per scene, and zero absorption returns unit transmittance directly.
+Tests now include 128 nested media, nonconcentric and disjoint boundaries, and a
+CPU inside-glass internal-reflection series. The 43 standard and 14 GPU tests pass.
+The original CPU and GPU EXR baselines still match exactly.
+
+The room, 64-sphere and 4096-sphere hardware scenes, and emitting cavity all favored
+64-sample batches with 64-thread groups. CLI and programmatic settings now share
+these defaults. The tuning script accepts configurable workloads and sweep ranges.
+A GPU zero-absorption branch gave no clear gain and was removed; GPU Beer
+attenuation retains its original expression. CPU/GPU transport equations remain
+unchanged. Final benchmarks will measure the retained implementation together.
+
 ## References checked during investigation
 
 - [Apple: shadow queries accepting any intersection](https://developer.apple.com/videos/play/wwdc2021/10150/)

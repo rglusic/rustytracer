@@ -1,6 +1,7 @@
 use super::Settings;
-use super::geometry::{Hitable, Shape, Surface};
+use super::geometry::{Hitable, Surface};
 use super::material::{Color, Kind, attenuate, black, maximum, multiply, white};
+use super::media::MediumHierarchy;
 use super::ray::Ray;
 use super::sampler::Sampler;
 use cgmath::InnerSpace;
@@ -10,6 +11,7 @@ pub struct Scene {
     pub(super) renderables: Vec<Arc<dyn Hitable>>,
     pub(super) lights: Vec<usize>,
     pub(super) environment: Color,
+    media: MediumHierarchy,
 }
 pub(super) struct Intersection {
     pub index: usize,
@@ -27,10 +29,12 @@ impl Scene {
             .enumerate()
             .filter_map(|(i, o)| (maximum(o.material().emission) > 0.).then_some(i))
             .collect();
+        let media = MediumHierarchy::new(&renderables);
         Self {
             renderables,
             lights,
             environment,
+            media,
         }
     }
     pub(super) fn intersect(&self, ray: &Ray, maximum: f64) -> Option<Intersection> {
@@ -56,24 +60,9 @@ impl Scene {
             distance > 0. && distance < maximum
         })
     }
-    /// Nested spheres have a unique smallest containing volume. No fixed-depth medium stack.
+    #[cfg(test)]
     pub(super) fn medium(&self, point: Color, excluded: Option<usize>) -> (f64, Color) {
-        let mut radius = f64::INFINITY;
-        let mut medium = (1., black());
-        for (i, object) in self.renderables.iter().enumerate() {
-            let m = object.material();
-            if m.kind != Kind::Dielectric || excluded == Some(i) {
-                continue;
-            }
-            if let Shape::Sphere { center, radius: r } = object.shape()
-                && r < radius
-                && (point - center).magnitude2() < r * r
-            {
-                radius = r;
-                medium = (m.ior, m.absorption);
-            }
-        }
-        medium
+        self.media.properties(self.media.at(point, excluded))
     }
     pub fn render(&self, primary: &Ray, settings: Settings, rng: &mut Sampler) -> Color {
         let mut ray = Ray::new_from(*primary.origin(), primary.direction().normalize());
@@ -84,8 +73,9 @@ impl Scene {
         let mut previous_pdf = 0.;
         let mut previous_delta = true;
         let mut previous_point = *primary.origin();
+        let mut medium = self.media.at(*primary.origin(), None);
         loop {
-            let (eta_i, absorption) = self.medium(*ray.origin(), None);
+            let (eta_i, absorption) = self.media.properties(medium);
             let Some(hit) = self.intersect(&ray, f64::INFINITY) else {
                 let weight = if previous_delta || !settings.light_sampling {
                     1.
@@ -122,11 +112,12 @@ impl Scene {
             if settings.light_sampling && !m.is_delta() {
                 radiance += multiply(beta, self.direct_light(surface, wo, n, &m, absorption, rng));
             }
-            let eta_t = if front {
-                m.ior
+            let target_medium = if m.kind == Kind::Dielectric {
+                self.media.transmitted(hit.index, front)
             } else {
-                self.medium(surface.point, Some(hit.index)).0
+                medium
             };
+            let eta_t = self.media.properties(target_medium).0;
             let Some(sample) = m.sample(wo, n, eta_i, eta_t, rng) else {
                 break;
             };
@@ -139,6 +130,7 @@ impl Scene {
             }
             if sample.transmission {
                 eta_scale *= sample.eta * sample.eta;
+                medium = target_medium;
             }
             depth += 1;
             // The cap below changes variance, not expectation: survivors divide by survival.

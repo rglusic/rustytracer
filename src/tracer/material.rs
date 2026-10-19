@@ -221,6 +221,9 @@ pub fn multiply(a: Color, b: Color) -> Color {
     a.mul_element_wise(b)
 }
 pub fn attenuate(sigma: Color, distance: f64) -> Color {
+    if sigma == black() {
+        return white();
+    }
     Color::new(
         (-sigma.x * distance).exp(),
         (-sigma.y * distance).exp(),

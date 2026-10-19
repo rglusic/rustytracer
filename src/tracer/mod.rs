@@ -4,6 +4,7 @@ mod geometry;
 mod light_sampling;
 mod material;
 mod material_input;
+mod media;
 #[cfg(test)]
 mod physics_tests;
 mod ray;

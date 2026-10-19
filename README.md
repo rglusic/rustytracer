@@ -59,8 +59,8 @@ is applied. Spectral dispersion requires wavelength-based transport.
 | `--samples` | `5000` | Samples per pixel |
 | `--seed` | `1` | Reproducible random streams |
 | `--max-bounces` | `0` | Unlimited; explicit 1..256 caps introduce truncation bias |
-| `--batch-size` | `32` | GPU sample target per batch, 1..1024 |
-| `--threadgroup-size` | `128` | Threads per group, subject to SIMD/pipeline limits |
+| `--batch-size` | `64` | GPU sample target per batch, 1..1024 |
+| `--threadgroup-size` | `64` | Threads per group, subject to SIMD/pipeline limits |
 | `--no-light-sampling` | off | Disable MIS/direct sampling for estimator comparisons |
 | `--exposure` | `0` | Display exposure in stops, -64..64 |
 | `--progress` | off | GPU sample-batch progress |

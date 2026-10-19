@@ -68,7 +68,9 @@ law, total internal reflection, and the radiance transmission factor
 Dielectric media are closed spheres. They must be disjoint or strictly nested;
 intersecting or coincident dielectric boundaries are rejected. The smallest
 containing dielectric determines the current medium, including cameras inside
-objects. Metal stores parent-medium relationships, avoiding a fixed-size stack.
+objects. CPU and Metal store parent-medium relationships, avoiding a fixed-size
+stack and repeated containment searches at secondary vertices. The medium changes
+only on transmission; reflection preserves the incident medium.
 IOR defaults to 1.5 for glass; ambient vacuum/air is modeled as IOR 1. Absorption
 is a per-channel coefficient in inverse metres, with segment transmittance
 `exp(-absorption * distance)`. Tint is therefore thickness-dependent rather than

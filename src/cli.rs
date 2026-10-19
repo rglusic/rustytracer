@@ -29,9 +29,9 @@ pub struct Cli {
     /// Display exposure in stops; EXR always stores raw scene-linear radiance.
     #[arg(long, default_value_t = 0.0, allow_hyphen_values = true)]
     pub exposure: f64,
-    #[arg(long, default_value_t = 32, value_parser = clap::value_parser!(u32).range(1..=1024))]
+    #[arg(long, default_value_t = Settings::DEFAULT_BATCH_SIZE, value_parser = clap::value_parser!(u32).range(1..=1024))]
     pub batch_size: u32,
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = Settings::DEFAULT_THREADGROUP_SIZE)]
     pub threadgroup_size: usize,
     /// Number of timed renders, reusing the device, pipelines, and scene buffers.
     #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=100))]

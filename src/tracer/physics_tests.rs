@@ -156,3 +156,18 @@ fn roulette_and_unlimited_depth_do_not_lose_enclosure_energy() {
     );
     assert!((truncated - Color::new(0.36, 0.36, 0.36)).magnitude() < 1e-12);
 }
+
+#[test]
+fn cpu_camera_inside_absorbing_glass_matches_internal_reflection_series() {
+    let w = load(json!({
+        "camera":{"lookfrom":[0,0,0],"lookat":[0,0,-1],"fov":45},
+        "environment":[1,1,1],"planes":[],
+        "spheres":[{"center":[0,0,0],"radius":2,"mat":{"kind":"dielectric","ior":1.5,"absorption":[0.1,0.2,0.3]}}]
+    }));
+    let scene = Scene::with_environment(w.get_hitables(), [1., 1., 1.].into());
+    let actual = estimate(&scene, Settings::default(), 100_000, 31);
+    for (channel, sigma) in [0.1_f64, 0.2, 0.3].into_iter().enumerate() {
+        let expected = 2.25 * 0.96 * (-2. * sigma).exp() / (1. - 0.04 * (-4. * sigma).exp());
+        assert!((actual[channel] - expected).abs() < 0.003, "{actual:?}");
+    }
+}

@@ -43,14 +43,18 @@ impl Default for Settings {
             seed: 1,
             max_bounces: 0,
             light_sampling: true,
-            batch_size: 32,
-            threadgroup_size: 128,
+            batch_size: Self::DEFAULT_BATCH_SIZE,
+            threadgroup_size: Self::DEFAULT_THREADGROUP_SIZE,
             progress: false,
         }
     }
 }
 
 impl Settings {
+    /// Measured across room, dense hardware traversal, and long-path cavity workloads.
+    pub const DEFAULT_BATCH_SIZE: u32 = 64;
+    pub const DEFAULT_THREADGROUP_SIZE: usize = 64;
+
     pub fn validate(self) -> Result<()> {
         self.image.validate()?;
         if self.max_bounces > 256
