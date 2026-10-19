@@ -1,0 +1,1995 @@
+{
+  "schema_version": 1,
+  "phase": "pre-optimization investigation",
+  "measured_at": "2026-10-19T13:59:08.937215-07:00",
+  "code_revision": "43426ba68a2f0e2bbb7751dcab37f97b3ca043d3",
+  "binary_sha256": "26604a10aaf122ccf0efed1b86019cf19786e4da03a5943c35546ae41b32eaf7",
+  "toolchain": "Rust 1.99.1 release, locked dependencies; fresh rebuild produced the same executable hash",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": {
+    "chip": "Apple M4 Pro",
+    "cpu_cores": 12,
+    "gpu_cores": 16,
+    "memory_gib": 24
+  },
+  "integrator": "physical-rgb-v1",
+  "tuning_sweep": [
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.5890771679999998,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.5333792499999999,
+      "p95_render_and_encoding_seconds": 1.547361083,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.059800208,
+          "gpu_seconds": 1.4810565416701138,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.547361083,
+          "render_seconds": 1.487560875,
+          "samples_per_second": 178426849.25415236
+        },
+        {
+          "encoding_seconds": 0.059043292,
+          "gpu_seconds": 1.4723590416833758,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.5333792499999999,
+          "render_seconds": 1.474335958,
+          "samples_per_second": 180027353.03292388
+        },
+        {
+          "encoding_seconds": 0.059502125,
+          "gpu_seconds": 1.4705756250186823,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.532257292,
+          "render_seconds": 1.4727551669999999,
+          "samples_per_second": 180220586.52196875
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 64,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 64,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.0252275,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.5776446659999999,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.542943792,
+      "p95_render_and_encoding_seconds": 1.551078166,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.059352166,
+          "gpu_seconds": 1.4898580415756442,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.551078166,
+          "render_seconds": 1.4917259999999999,
+          "samples_per_second": 177928654.4579903
+        },
+        {
+          "encoding_seconds": 0.059241417,
+          "gpu_seconds": 1.4817638749373145,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.542943792,
+          "render_seconds": 1.483702375,
+          "samples_per_second": 178890864.14652398
+        },
+        {
+          "encoding_seconds": 0.059661291,
+          "gpu_seconds": 1.4792370833456516,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.540759416,
+          "render_seconds": 1.481098125,
+          "samples_per_second": 179205412.20049146
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 64,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 128,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.024433708,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.5958476659999998,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.549338584,
+      "p95_render_and_encoding_seconds": 1.559731959,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.059295125,
+          "gpu_seconds": 1.497552708373405,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.559731959,
+          "render_seconds": 1.500436834,
+          "samples_per_second": 176895683.96719325
+        },
+        {
+          "encoding_seconds": 0.059331459,
+          "gpu_seconds": 1.4881136666517705,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.549338584,
+          "render_seconds": 1.490007125,
+          "samples_per_second": 178133913.28581735
+        },
+        {
+          "encoding_seconds": 0.059766333,
+          "gpu_seconds": 1.4732895834022202,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.53522625,
+          "render_seconds": 1.475459917,
+          "samples_per_second": 179890213.85255292
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 64,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 256,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.024559375,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.602135207,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.572207542,
+      "p95_render_and_encoding_seconds": 1.5767083339999999,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.057988417,
+          "gpu_seconds": 1.5162278749630786,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.5767083339999999,
+          "render_seconds": 1.5187199169999999,
+          "samples_per_second": 174766128.38810885
+        },
+        {
+          "encoding_seconds": 0.058499042,
+          "gpu_seconds": 1.5109014999470674,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.572207542,
+          "render_seconds": 1.5137085,
+          "samples_per_second": 175344724.56222582
+        },
+        {
+          "encoding_seconds": 0.058782875,
+          "gpu_seconds": 1.5064518749713898,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.567112834,
+          "render_seconds": 1.508329959,
+          "samples_per_second": 175969984.82743788
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 32,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 64,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.023501166,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.6196014570000001,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.574854333,
+      "p95_render_and_encoding_seconds": 1.582854875,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.058978292,
+          "gpu_seconds": 1.509876666648779,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.571016917,
+          "render_seconds": 1.512038625,
+          "samples_per_second": 175538372.90366837
+        },
+        {
+          "encoding_seconds": 0.0588525,
+          "gpu_seconds": 1.522076583292801,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.582854875,
+          "render_seconds": 1.524002375,
+          "samples_per_second": 174160358.50994
+        },
+        {
+          "encoding_seconds": 0.059117958,
+          "gpu_seconds": 1.5135699999518692,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.574854333,
+          "render_seconds": 1.515736375,
+          "samples_per_second": 175110134.1748825
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 32,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 128,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.023448541,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.6207698330000002,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.591421167,
+      "p95_render_and_encoding_seconds": 1.6006382499999998,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.059477084,
+          "gpu_seconds": 1.5211816666997038,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.582531167,
+          "render_seconds": 1.523054083,
+          "samples_per_second": 174268795.15479428
+        },
+        {
+          "encoding_seconds": 0.058989917,
+          "gpu_seconds": 1.5305260416353121,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.591421167,
+          "render_seconds": 1.5324312500000001,
+          "samples_per_second": 173202419.3581278
+        },
+        {
+          "encoding_seconds": 0.059614125,
+          "gpu_seconds": 1.5392419583513401,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.6006382499999998,
+          "render_seconds": 1.5410241249999999,
+          "samples_per_second": 172236628.67704943
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 32,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 256,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.025319459,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.689437125,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.6415325,
+      "p95_render_and_encoding_seconds": 1.6447786669999997,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.054494792,
+          "gpu_seconds": 1.580756958341226,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.637977375,
+          "render_seconds": 1.5834825829999999,
+          "samples_per_second": 167618389.27027845
+        },
+        {
+          "encoding_seconds": 0.05580225,
+          "gpu_seconds": 1.5829291666741483,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.6415325,
+          "render_seconds": 1.5857302500000001,
+          "samples_per_second": 167380801.3689592
+        },
+        {
+          "encoding_seconds": 0.055934625,
+          "gpu_seconds": 1.5861852500238456,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.6447786669999997,
+          "render_seconds": 1.5888440419999998,
+          "samples_per_second": 167052771.0610882
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 16,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 64,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.026708875,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.6946208749999998,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.661920083,
+      "p95_render_and_encoding_seconds": 1.669594416,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.056118541,
+          "gpu_seconds": 1.6082220416865312,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.669594416,
+          "render_seconds": 1.613475875,
+          "samples_per_second": 164502490.62447247
+        },
+        {
+          "encoding_seconds": 0.056852458,
+          "gpu_seconds": 1.6022975416854024,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.661920083,
+          "render_seconds": 1.605067625,
+          "samples_per_second": 165364247.50327888
+        },
+        {
+          "encoding_seconds": 0.056529,
+          "gpu_seconds": 1.5988081666873768,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.6579581250000002,
+          "render_seconds": 1.6014291250000001,
+          "samples_per_second": 165739960.5493
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 16,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 128,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.024572083,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    },
+    {
+      "backend": "metal",
+      "cold_end_to_end_seconds": 1.700966459,
+      "device": "Apple M4 Pro",
+      "display_exposure_ev": 0.0,
+      "integrator": "physical-rgb-v1",
+      "median_render_and_encoding_seconds": 1.662116708,
+      "p95_render_and_encoding_seconds": 1.664263999,
+      "planes": 6,
+      "reference": null,
+      "runs": [
+        {
+          "encoding_seconds": 0.056304833,
+          "gpu_seconds": 1.6030588749563321,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.662116708,
+          "render_seconds": 1.605811875,
+          "samples_per_second": 165287605.68544182
+        },
+        {
+          "encoding_seconds": 0.057572333,
+          "gpu_seconds": 1.6040718331933022,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.664263999,
+          "render_seconds": 1.6066916660000001,
+          "samples_per_second": 165197097.6240814
+        },
+        {
+          "encoding_seconds": 0.057924917,
+          "gpu_seconds": 1.5995966250193305,
+          "radiance_mse": null,
+          "render_and_encoding_seconds": 1.659933251,
+          "render_seconds": 1.602008334,
+          "samples_per_second": 165680036.96789756
+        }
+      ],
+      "scene": "/Users/rglusic/projects-local/rustytracer/worlds/physical_room.json",
+      "settings": {
+        "backend": "metal",
+        "batch_size": 16,
+        "image": {
+          "height": 1080,
+          "samples_per_pixel": 128,
+          "width": 1920
+        },
+        "light_sampling": true,
+        "max_bounces": 0,
+        "progress": false,
+        "seed": 42,
+        "threadgroup_size": 256,
+        "traversal": "linear"
+      },
+      "setup_seconds": 0.028164542,
+      "spheres": 3,
+      "traversal": "linear",
+      "warmup_runs": 1
+    }
+  ],
+  "confirmation": {
+    "order": [
+      "baseline",
+      "candidate",
+      "candidate",
+      "baseline"
+    ],
+    "warmup_runs_per_process": 1,
+    "runs": [
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 1.621651834,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 1.582175958,
+        "p95_render_and_encoding_seconds": 1.5863147079999997,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.058621167,
+            "gpu_seconds": 1.5190304999705404,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.579345917,
+            "render_seconds": 1.5207247499999998,
+            "samples_per_second": 174535727.1261614
+          },
+          {
+            "encoding_seconds": 0.058709458,
+            "gpu_seconds": 1.5217018750263378,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.582175958,
+            "render_seconds": 1.5234665,
+            "samples_per_second": 174221618.91974652
+          },
+          {
+            "encoding_seconds": 0.058554541,
+            "gpu_seconds": 1.5258697083336301,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.5863147079999997,
+            "render_seconds": 1.5277601669999998,
+            "samples_per_second": 173731980.79983717
+          }
+        ],
+        "scene": "worlds/physical_room.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 1080,
+            "samples_per_pixel": 128,
+            "width": 1920
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.031144459,
+        "spheres": 3,
+        "traversal": "linear",
+        "warmup_runs": 1
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 1.568604874,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 1.539184666,
+        "p95_render_and_encoding_seconds": 1.542663084,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.059265834,
+            "gpu_seconds": 1.4812143333838321,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.542663084,
+            "render_seconds": 1.48339725,
+            "samples_per_second": 178927660.81371665
+          },
+          {
+            "encoding_seconds": 0.059493667,
+            "gpu_seconds": 1.4772911249892786,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.538714084,
+            "render_seconds": 1.479220417,
+            "samples_per_second": 179432893.80652186
+          },
+          {
+            "encoding_seconds": 0.059000625,
+            "gpu_seconds": 1.4782402083510533,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.539184666,
+            "render_seconds": 1.480184041,
+            "samples_per_second": 179316080.06034434
+          }
+        ],
+        "scene": "worlds/physical_room.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 64,
+          "image": {
+            "height": 1080,
+            "samples_per_pixel": 128,
+            "width": 1920
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 64,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.024894333,
+        "spheres": 3,
+        "traversal": "linear",
+        "warmup_runs": 1
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 1.5659068339999997,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 1.522259292,
+        "p95_render_and_encoding_seconds": 1.528426709,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.059422459,
+            "gpu_seconds": 1.460544291709084,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.521882168,
+            "render_seconds": 1.462459709,
+            "samples_per_second": 181489307.61414912
+          },
+          {
+            "encoding_seconds": 0.059676042,
+            "gpu_seconds": 1.4666562916245311,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.528426709,
+            "render_seconds": 1.4687506670000001,
+            "samples_per_second": 180711951.97625735
+          },
+          {
+            "encoding_seconds": 0.059471417,
+            "gpu_seconds": 1.460808583360631,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.522259292,
+            "render_seconds": 1.462787875,
+            "samples_per_second": 181448591.78573653
+          }
+        ],
+        "scene": "worlds/physical_room.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 64,
+          "image": {
+            "height": 1080,
+            "samples_per_pixel": 128,
+            "width": 1920
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 64,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.024290625,
+        "spheres": 3,
+        "traversal": "linear",
+        "warmup_runs": 1
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 1.613446459,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 1.583430291,
+        "p95_render_and_encoding_seconds": 1.583487625,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.059473375,
+            "gpu_seconds": 1.507628916646354,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.569096792,
+            "render_seconds": 1.509623417,
+            "samples_per_second": 175819212.26914832
+          },
+          {
+            "encoding_seconds": 0.059467416,
+            "gpu_seconds": 1.5221282916609198,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.583430291,
+            "render_seconds": 1.523962875,
+            "samples_per_second": 174164872.61869815
+          },
+          {
+            "encoding_seconds": 0.059274292,
+            "gpu_seconds": 1.5223121250164695,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 1.583487625,
+            "render_seconds": 1.524213333,
+            "samples_per_second": 174136253.93080065
+          }
+        ],
+        "scene": "worlds/physical_room.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 1080,
+            "samples_per_pixel": 128,
+            "width": 1920
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.024074584,
+        "spheres": 3,
+        "traversal": "linear",
+        "warmup_runs": 1
+      }
+    ],
+    "statistics": {
+      "batch-32-threads-128": {
+        "timed_runs": 6,
+        "median_render_seconds": 1.5237146875,
+        "median_render_and_encoding_seconds": 1.5828031245,
+        "median_render_wall_minus_gpu_seconds": 0.0018625210027249928
+      },
+      "batch-64-threads-64": {
+        "timed_runs": 6,
+        "median_render_seconds": 1.473985542,
+        "median_render_and_encoding_seconds": 1.5335703965,
+        "median_render_wall_minus_gpu_seconds": 0.00196156214415788
+      }
+    },
+    "candidate_elapsed_time_reduction_percent": 3.110477054153682
+  },
+  "dense_scenes": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "results": [
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.049246042000000004,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.008865375,
+        "p95_render_and_encoding_seconds": 0.009523917000000002,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001236083,
+            "gpu_seconds": 0.007521958381403238,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.009523917000000002,
+            "render_seconds": 0.008287834,
+            "samples_per_second": 71167448.57582814
+          },
+          {
+            "encoding_seconds": 0.00118375,
+            "gpu_seconds": 0.007506833353545517,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.008865375,
+            "render_seconds": 0.007681625,
+            "samples_per_second": 76783753.43758644
+          },
+          {
+            "encoding_seconds": 0.00119975,
+            "gpu_seconds": 0.007451375015079975,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.008815,
+            "render_seconds": 0.00761525,
+            "samples_per_second": 77453005.48242015
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.024618917,
+        "spheres": 16,
+        "traversal": "linear",
+        "warmup_runs": 1,
+        "case": "spheres-16",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "linear",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16-metal-linear.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16-metal-linear.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.058588167,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.010515666,
+        "p95_render_and_encoding_seconds": 0.010776625,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001179125,
+            "gpu_seconds": 0.008950374962296337,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.010776625,
+            "render_seconds": 0.0095975,
+            "samples_per_second": 61456004.16775202
+          },
+          {
+            "encoding_seconds": 0.001240167,
+            "gpu_seconds": 0.008893000020179898,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.010317042,
+            "render_seconds": 0.009076875,
+            "samples_per_second": 64980954.34827515
+          },
+          {
+            "encoding_seconds": 0.00136375,
+            "gpu_seconds": 0.008956708305049688,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.010515666,
+            "render_seconds": 0.009151916,
+            "samples_per_second": 64448143.97334941
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "hardware"
+        },
+        "setup_seconds": 0.0377595,
+        "spheres": 16,
+        "traversal": "hardware",
+        "warmup_runs": 1,
+        "case": "spheres-16",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "hardware",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16-metal-hardware.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-16-metal-hardware.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.052014041999999996,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.02481825,
+        "p95_render_and_encoding_seconds": 0.025940417,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001154083,
+            "gpu_seconds": 0.024028833315242082,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.025940417,
+            "render_seconds": 0.024786334,
+            "samples_per_second": 23796338.740533393
+          },
+          {
+            "encoding_seconds": 0.001112833,
+            "gpu_seconds": 0.023383833351545036,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.024724125,
+            "render_seconds": 0.023611292,
+            "samples_per_second": 24980589.795763824
+          },
+          {
+            "encoding_seconds": 0.00111975,
+            "gpu_seconds": 0.02348629164043814,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.02481825,
+            "render_seconds": 0.0236985,
+            "samples_per_second": 24888663.83948351
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.024803708,
+        "spheres": 64,
+        "traversal": "linear",
+        "warmup_runs": 1,
+        "case": "spheres-64",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "linear",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64-metal-linear.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64-metal-linear.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.044856292000000006,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.014189707999999999,
+        "p95_render_and_encoding_seconds": 0.014451542,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001138667,
+            "gpu_seconds": 0.012695875018835068,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.014006916999999999,
+            "render_seconds": 0.01286825,
+            "samples_per_second": 45835603.13173897
+          },
+          {
+            "encoding_seconds": 0.001101,
+            "gpu_seconds": 0.013131791667547077,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.014451542,
+            "render_seconds": 0.013350542,
+            "samples_per_second": 44179779.367759004
+          },
+          {
+            "encoding_seconds": 0.001092,
+            "gpu_seconds": 0.012785249971784651,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.014189707999999999,
+            "render_seconds": 0.013097708,
+            "samples_per_second": 45032611.812692724
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "hardware"
+        },
+        "setup_seconds": 0.027026417,
+        "spheres": 64,
+        "traversal": "hardware",
+        "warmup_runs": 1,
+        "case": "spheres-64",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "hardware",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64-metal-hardware.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-64-metal-hardware.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.119570459,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.089558458,
+        "p95_render_and_encoding_seconds": 0.090659999,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001190583,
+            "gpu_seconds": 0.08815424999920651,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.08955287399999999,
+            "render_seconds": 0.088362291,
+            "samples_per_second": 6675064.592881595
+          },
+          {
+            "encoding_seconds": 0.001257083,
+            "gpu_seconds": 0.08917562500573695,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.090659999,
+            "render_seconds": 0.089402916,
+            "samples_per_second": 6597368.703275853
+          },
+          {
+            "encoding_seconds": 0.001163708,
+            "gpu_seconds": 0.08809912501601502,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.089558458,
+            "render_seconds": 0.08839475,
+            "samples_per_second": 6672613.475347801
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.028617209,
+        "spheres": 256,
+        "traversal": "linear",
+        "warmup_runs": 1,
+        "case": "spheres-256",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "linear",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256-metal-linear.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256-metal-linear.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.050529374,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.016122,
+        "p95_render_and_encoding_seconds": 0.01612425,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001133667,
+            "gpu_seconds": 0.014744916639756411,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.016122,
+            "render_seconds": 0.014988333,
+            "samples_per_second": 39352208.147497125
+          },
+          {
+            "encoding_seconds": 0.001120542,
+            "gpu_seconds": 0.01477129163686186,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.01612425,
+            "render_seconds": 0.015003708,
+            "samples_per_second": 39311882.10274421
+          },
+          {
+            "encoding_seconds": 0.001061125,
+            "gpu_seconds": 0.014770541689358652,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.016065875,
+            "render_seconds": 0.01500475,
+            "samples_per_second": 39309152.10183442
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "hardware"
+        },
+        "setup_seconds": 0.030448708,
+        "spheres": 256,
+        "traversal": "hardware",
+        "warmup_runs": 1,
+        "case": "spheres-256",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "hardware",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256-metal-hardware.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-256-metal-hardware.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.424812333,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.39575775,
+        "p95_render_and_encoding_seconds": 0.396011667,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.0012455,
+            "gpu_seconds": 0.3942137083504349,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.39575775,
+            "render_seconds": 0.39451225,
+            "samples_per_second": 1495071.445816955
+          },
+          {
+            "encoding_seconds": 0.001189125,
+            "gpu_seconds": 0.3946187500259839,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.396011667,
+            "render_seconds": 0.394822542,
+            "samples_per_second": 1493896.4655163991
+          },
+          {
+            "encoding_seconds": 0.00120875,
+            "gpu_seconds": 0.391739749989938,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.393128875,
+            "render_seconds": 0.391920125,
+            "samples_per_second": 1504959.715962532
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.031159208,
+        "spheres": 1024,
+        "traversal": "linear",
+        "warmup_runs": 1,
+        "case": "spheres-1024",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "linear",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024-metal-linear.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024-metal-linear.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.055510666,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.020717959,
+        "p95_render_and_encoding_seconds": 0.021282791000000002,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001174292,
+            "gpu_seconds": 0.018857875023968518,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.020717959,
+            "render_seconds": 0.019543667,
+            "samples_per_second": 30179801.978820045
+          },
+          {
+            "encoding_seconds": 0.001113958,
+            "gpu_seconds": 0.019942249986343086,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.021282791000000002,
+            "render_seconds": 0.020168833,
+            "samples_per_second": 29244329.604990035
+          },
+          {
+            "encoding_seconds": 0.001154667,
+            "gpu_seconds": 0.019029999966733158,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.020381917000000003,
+            "render_seconds": 0.01922725,
+            "samples_per_second": 30676461.79250803
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "hardware"
+        },
+        "setup_seconds": 0.030524125,
+        "spheres": 1024,
+        "traversal": "hardware",
+        "warmup_runs": 1,
+        "case": "spheres-1024",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "hardware",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024-metal-hardware.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-1024-metal-hardware.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 2.088878293,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 2.0356778760000003,
+        "p95_render_and_encoding_seconds": 2.0402544999999996,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001270084,
+            "gpu_seconds": 2.033691374992486,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 2.0356778760000003,
+            "render_seconds": 2.034407792,
+            "samples_per_second": 289924.17465141125
+          },
+          {
+            "encoding_seconds": 0.001192083,
+            "gpu_seconds": 2.0283392500132322,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 2.030357583,
+            "render_seconds": 2.0291655,
+            "samples_per_second": 290673.1856026529
+          },
+          {
+            "encoding_seconds": 0.001233792,
+            "gpu_seconds": 2.038277250016108,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 2.0402544999999996,
+            "render_seconds": 2.039020708,
+            "samples_per_second": 289268.273581457
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "linear"
+        },
+        "setup_seconds": 0.04906,
+        "spheres": 4096,
+        "traversal": "linear",
+        "warmup_runs": 1,
+        "case": "spheres-4096",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "linear",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096-metal-linear.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096-metal-linear.json"
+        ]
+      },
+      {
+        "backend": "metal",
+        "cold_end_to_end_seconds": 0.08354012400000001,
+        "device": "Apple M4 Pro",
+        "display_exposure_ev": 0.0,
+        "integrator": "physical-rgb-v1",
+        "median_render_and_encoding_seconds": 0.028138625,
+        "p95_render_and_encoding_seconds": 0.028211583,
+        "planes": 6,
+        "reference": null,
+        "runs": [
+          {
+            "encoding_seconds": 0.001093917,
+            "gpu_seconds": 0.026782125001773238,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.028138625,
+            "render_seconds": 0.027044708,
+            "samples_per_second": 21809220.49518893
+          },
+          {
+            "encoding_seconds": 0.00108275,
+            "gpu_seconds": 0.026429083314724267,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.02775625,
+            "render_seconds": 0.0266735,
+            "samples_per_second": 22112733.612011924
+          },
+          {
+            "encoding_seconds": 0.001058791,
+            "gpu_seconds": 0.02693033334799111,
+            "radiance_mse": null,
+            "render_and_encoding_seconds": 0.028211583,
+            "render_seconds": 0.027152792,
+            "samples_per_second": 21722407.03644767
+          }
+        ],
+        "scene": "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096.json",
+        "settings": {
+          "backend": "metal",
+          "batch_size": 32,
+          "image": {
+            "height": 144,
+            "samples_per_pixel": 16,
+            "width": 256
+          },
+          "light_sampling": true,
+          "max_bounces": 0,
+          "progress": false,
+          "seed": 42,
+          "threadgroup_size": 128,
+          "traversal": "hardware"
+        },
+        "setup_seconds": 0.052663458,
+        "spheres": 4096,
+        "traversal": "hardware",
+        "warmup_runs": 1,
+        "case": "spheres-4096",
+        "command": [
+          "/Users/rglusic/projects-local/rustytracer/target/release/rustytracer",
+          "--scene",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096.json",
+          "--backend",
+          "metal",
+          "--traversal",
+          "hardware",
+          "--width",
+          "256",
+          "--height",
+          "144",
+          "--samples",
+          "16",
+          "--seed",
+          "42",
+          "--benchmark",
+          "3",
+          "--warmup",
+          "1",
+          "--output",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096-metal-hardware.png",
+          "--metrics",
+          "/Users/rglusic/projects-local/rustytracer/target/optimization-baseline/dense/spheres-4096-metal-hardware.json"
+        ]
+      }
+    ]
+  },
+  "cpu_profile": {
+    "template": "Time Profiler",
+    "recording_seconds": 20.826236,
+    "stopped_at_time_limit": true,
+    "not_a_completed_render_timing": true,
+    "total_sampled_cpu_seconds": 218.819,
+    "leaf": [
+      {
+        "function": "core::f64::_$LT$impl$u20$f64$GT$::next_down::h2981e0a033d7eeb9",
+        "sampled_cpu_seconds": 19.005,
+        "percent": 8.685260420713009
+      },
+      {
+        "function": "__sincos_stret",
+        "sampled_cpu_seconds": 17.517,
+        "percent": 8.005246345152843
+      },
+      {
+        "function": "core::f64::_$LT$impl$u20$f64$GT$::next_up::he1b63ffa49c5a4f3",
+        "sampled_cpu_seconds": 17.177,
+        "percent": 7.8498667848769985
+      },
+      {
+        "function": "_$LT$rustytracer..tracer..geometry..Plane$u20$as$u20$rustytracer..tracer..geometry..Hitable$GT$::hit::h2a9a0a5f45df0fc3",
+        "sampled_cpu_seconds": 15.786,
+        "percent": 7.214181583866118
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::intersect::hd94f87713967647a",
+        "sampled_cpu_seconds": 13.886,
+        "percent": 6.345884041148164
+      },
+      {
+        "function": "rustytracer::tracer::light_sampling::_$LT$impl$u20$rustytracer..tracer..scene..Scene$GT$::direct_light::h9e3bcbdb58f7db73",
+        "sampled_cpu_seconds": 10.811,
+        "percent": 4.940613018065159
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::render::h9a8f6de0ccdedbe2",
+        "sampled_cpu_seconds": 10.395,
+        "percent": 4.7505015560805965
+      },
+      {
+        "function": "exp",
+        "sampled_cpu_seconds": 9.666,
+        "percent": 4.4173494989009185
+      },
+      {
+        "function": "0x1a54730fc",
+        "sampled_cpu_seconds": 7.851,
+        "percent": 3.587896846251925
+      },
+      {
+        "function": "rustytracer::tracer::geometry::sphere_distance::he16ecc231ec03e0f",
+        "sampled_cpu_seconds": 7.402,
+        "percent": 3.382704426946472
+      },
+      {
+        "function": "_$LT$f64$u20$as$u20$core..ops..arith..Mul$GT$::mul::h5ece00dbb400c0d7",
+        "sampled_cpu_seconds": 7.303,
+        "percent": 3.3374615549837996
+      },
+      {
+        "function": "rustytracer::tracer::material::Material::evaluate::h29c9ac704c83a3e7",
+        "sampled_cpu_seconds": 6.629,
+        "percent": 3.0294444266722724
+      },
+      {
+        "function": "_$LT$f64$u20$as$u20$core..ops..arith..Add$GT$::add::h122f44a160e9214d",
+        "sampled_cpu_seconds": 5.874,
+        "percent": 2.684410403118559
+      },
+      {
+        "function": "_$LT$alloc..sync..Arc$LT$T$C$A$GT$$u20$as$u20$core..ops..deref..Deref$GT$::deref::h79bfecb749441307",
+        "sampled_cpu_seconds": 4.69,
+        "percent": 2.1433239343932655
+      },
+      {
+        "function": "rustytracer::tracer::geometry::round_away::h41f5efd0f4b3a4d2",
+        "sampled_cpu_seconds": 4.674,
+        "percent": 2.136011955086167
+      },
+      {
+        "function": "_$LT$rustytracer..tracer..geometry..Sphere$u20$as$u20$rustytracer..tracer..geometry..Hitable$GT$::hit::h9b6e5b67ec971634",
+        "sampled_cpu_seconds": 4.522,
+        "percent": 2.066548151668731
+      },
+      {
+        "function": "0x1a5472fe4",
+        "sampled_cpu_seconds": 4.168,
+        "percent": 1.9047706094991752
+      },
+      {
+        "function": "rustytracer::tracer::geometry::Surface::offset::hb0c8e4928103308f",
+        "sampled_cpu_seconds": 3.619,
+        "percent": 1.6538783195243558
+      },
+      {
+        "function": "_$LT$rustytracer..tracer..geometry..Sphere$u20$as$u20$rustytracer..tracer..geometry..Hitable$GT$::shape::h86db047fae51298e",
+        "sampled_cpu_seconds": 3.376,
+        "percent": 1.5428276337977964
+      },
+      {
+        "function": "std::f64::_$LT$impl$u20$f64$GT$::sqrt::h393a6274bc256152",
+        "sampled_cpu_seconds": 3.304,
+        "percent": 1.5099237269158527
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::medium::h35ba3495dfd10f61",
+        "sampled_cpu_seconds": 2.876,
+        "percent": 1.3143282804509664
+      },
+      {
+        "function": "_$LT$f64$u20$as$u20$core..ops..arith..DivAssign$GT$::div_assign::h144152ac36b43f34",
+        "sampled_cpu_seconds": 2.82,
+        "percent": 1.2887363528761213
+      },
+      {
+        "function": "core::f64::_$LT$impl$u20$f64$GT$::to_bits::he43e4dfcbcbd0eda",
+        "sampled_cpu_seconds": 2.59,
+        "percent": 1.1836266503365795
+      },
+      {
+        "function": "_$LT$rustytracer..tracer..material..Kind$u20$as$u20$core..cmp..PartialEq$GT$::eq::h3ae6d0070640357c",
+        "sampled_cpu_seconds": 2.502,
+        "percent": 1.1434107641475375
+      },
+      {
+        "function": "rustytracer::tracer::sampler::Sampler::next::h3aac24073bcd6272",
+        "sampled_cpu_seconds": 2.455,
+        "percent": 1.1219318249329355
+      }
+    ],
+    "inclusive": [
+      {
+        "function": "std::sys::pal::unix::thread::Thread::new::thread_start::hd6d146aed00830bd",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "thread_start",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "rustytracer::tracer::render::render_section::h8b80f6b5751ca8fd",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "std::thread::Builder::spawn_unchecked_::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::hd54ff90c47bcd4d4",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "_pthread_start",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "rustytracer::tracer::render::render_linear::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h250a725ad0db01bf",
+        "sampled_cpu_seconds": 218.813,
+        "percent": 99.99725800775984
+      },
+      {
+        "function": "rustytracer::tracer::light_sampling::_$LT$impl$u20$rustytracer..tracer..scene..Scene$GT$::direct_light::h9e3bcbdb58f7db73",
+        "sampled_cpu_seconds": 64.071,
+        "percent": 29.280364136569492
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::intersect::hd94f87713967647a",
+        "sampled_cpu_seconds": 57.955,
+        "percent": 26.48536004643107
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::render::h9a8f6de0ccdedbe2",
+        "sampled_cpu_seconds": 46.117,
+        "percent": 21.07540935659152
+      },
+      {
+        "function": "std::f64::_$LT$impl$u20$f64$GT$::cos::h512e37769b71a15c",
+        "sampled_cpu_seconds": 34.365,
+        "percent": 15.704760555527628
+      },
+      {
+        "function": "__sincos_stret",
+        "sampled_cpu_seconds": 28.447,
+        "percent": 13.000242209314548
+      },
+      {
+        "function": "core::f64::_$LT$impl$u20$f64$GT$::next_down::h2981e0a033d7eeb9",
+        "sampled_cpu_seconds": 19.005,
+        "percent": 8.685260420713009
+      },
+      {
+        "function": "core::f64::_$LT$impl$u20$f64$GT$::next_up::he1b63ffa49c5a4f3",
+        "sampled_cpu_seconds": 17.177,
+        "percent": 7.8498667848769985
+      },
+      {
+        "function": "_$LT$rustytracer..tracer..geometry..Plane$u20$as$u20$rustytracer..tracer..geometry..Hitable$GT$::hit::h2a9a0a5f45df0fc3",
+        "sampled_cpu_seconds": 15.786,
+        "percent": 7.214181583866118
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::medium::h35ba3495dfd10f61",
+        "sampled_cpu_seconds": 12.103,
+        "percent": 5.531055347113368
+      },
+      {
+        "function": "std::f64::_$LT$impl$u20$f64$GT$::exp::he93988a7e85a7ae1",
+        "sampled_cpu_seconds": 11.204,
+        "percent": 5.120213509795767
+      },
+      {
+        "function": "exp",
+        "sampled_cpu_seconds": 9.666,
+        "percent": 4.4173494989009185
+      },
+      {
+        "function": "rustytracer::tracer::light_sampling::_$LT$impl$u20$rustytracer..tracer..scene..Scene$GT$::light_pdf::hf8bcdb79a8e1b242",
+        "sampled_cpu_seconds": 8.881,
+        "percent": 4.058605514146395
+      },
+      {
+        "function": "rustytracer::tracer::material::Material::sample::h01d2ef60cc399356",
+        "sampled_cpu_seconds": 8.14,
+        "percent": 3.719969472486393
+      },
+      {
+        "function": "0x1a54730fc",
+        "sampled_cpu_seconds": 7.851,
+        "percent": 3.587896846251925
+      },
+      {
+        "function": "rustytracer::tracer::scene::Scene::intersect::_$u7b$$u7b$closure$u7d$$u7d$::h8c73ab382adbb0ed",
+        "sampled_cpu_seconds": 7.779,
+        "percent": 3.5549929393699817
+      },
+      {
+        "function": "rustytracer::tracer::geometry::sphere_distance::he16ecc231ec03e0f",
+        "sampled_cpu_seconds": 7.402,
+        "percent": 3.382704426946472
+      },
+      {
+        "function": "_$LT$f64$u20$as$u20$core..ops..arith..Mul$GT$::mul::h5ece00dbb400c0d7",
+        "sampled_cpu_seconds": 7.303,
+        "percent": 3.3374615549837996
+      },
+      {
+        "function": "rustytracer::tracer::material::Material::evaluate::h29c9ac704c83a3e7",
+        "sampled_cpu_seconds": 7.098,
+        "percent": 3.243776820111599
+      },
+      {
+        "function": "_$LT$f64$u20$as$u20$core..ops..arith..Add$GT$::add::h122f44a160e9214d",
+        "sampled_cpu_seconds": 5.874,
+        "percent": 2.684410403118559
+      }
+    ]
+  },
+  "metal_profile": {
+    "template": "Metal System Trace",
+    "warmup_renders": 1,
+    "timed_renders": 5,
+    "samples_per_render": 128,
+    "batch_size": 32,
+    "command_buffer_submissions": 24,
+    "submissions": [
+      {
+        "start_seconds": 0.78556275,
+        "encoding_seconds": 0.00012425
+      },
+      {
+        "start_seconds": 1.2136705,
+        "encoding_seconds": 4.0541e-05
+      },
+      {
+        "start_seconds": 1.597559333,
+        "encoding_seconds": 2.9667e-05
+      },
+      {
+        "start_seconds": 1.976349125,
+        "encoding_seconds": 1.5958e-05
+      },
+      {
+        "start_seconds": 2.420250125,
+        "encoding_seconds": 2.9e-05
+      },
+      {
+        "start_seconds": 2.803484875,
+        "encoding_seconds": 1.6375e-05
+      },
+      {
+        "start_seconds": 3.179940458,
+        "encoding_seconds": 2.5292e-05
+      },
+      {
+        "start_seconds": 3.561210875,
+        "encoding_seconds": 2.9541e-05
+      },
+      {
+        "start_seconds": 4.003450083,
+        "encoding_seconds": 3.1708e-05
+      },
+      {
+        "start_seconds": 4.380611708,
+        "encoding_seconds": 1.5292e-05
+      },
+      {
+        "start_seconds": 4.763054416,
+        "encoding_seconds": 1.7042e-05
+      },
+      {
+        "start_seconds": 5.14037425,
+        "encoding_seconds": 1.7625e-05
+      },
+      {
+        "start_seconds": 5.581895333,
+        "encoding_seconds": 2.3167e-05
+      },
+      {
+        "start_seconds": 5.958042291,
+        "encoding_seconds": 2.7167e-05
+      },
+      {
+        "start_seconds": 6.3379015,
+        "encoding_seconds": 2.4625e-05
+      },
+      {
+        "start_seconds": 6.715972666,
+        "encoding_seconds": 2.975e-05
+      },
+      {
+        "start_seconds": 7.15359375,
+        "encoding_seconds": 1.9541e-05
+      },
+      {
+        "start_seconds": 7.537161791,
+        "encoding_seconds": 3.1167e-05
+      },
+      {
+        "start_seconds": 7.921439708,
+        "encoding_seconds": 3.3875e-05
+      },
+      {
+        "start_seconds": 8.303688125,
+        "encoding_seconds": 1.7208e-05
+      },
+      {
+        "start_seconds": 8.742852916,
+        "encoding_seconds": 2.4875e-05
+      },
+      {
+        "start_seconds": 9.122542458,
+        "encoding_seconds": 2.1875e-05
+      },
+      {
+        "start_seconds": 9.503606,
+        "encoding_seconds": 2.2125e-05
+      },
+      {
+        "start_seconds": 9.884692875,
+        "encoding_seconds": 2.0708e-05
+      }
+    ],
+    "counters_or_shader_timeline_enabled": false
+  },
+  "limitations": [
+    "Inclusive CPU profile percentages overlap and must not be added.",
+    "System traces contain instrumentation overhead; uninstrumented timing reports are the performance baseline.",
+    "No GPU hardware counters or shader timeline samples were captured.",
+    "Measurements apply to these scenes, resolutions, and samples; tuning gains are candidates until validated across representative workloads.",
+    "Raw traces remain under ignored target/optimization-baseline; only renderer timing summaries are committed."
+  ]
+}
